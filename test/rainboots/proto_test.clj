@@ -1,9 +1,7 @@
 (ns rainboots.proto-test
   (:require [clojure.test :refer :all]
             [gloss.data.bytes.core :refer [create-buf-seq]]
-            [rainboots
-             [core :refer [wrap-stream]]
-             [proto :refer :all]]
+            [rainboots.proto :refer :all]
             [manifold.stream :as s])
   (:import [java.nio ByteBuffer]))
 

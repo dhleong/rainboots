@@ -1,10 +1,13 @@
 (ns ^{:author "Daniel Leong"
       :doc "Low-level protocol details"}
   rainboots.proto
-  (:require [gloss.core.protocols :refer [Reader read-bytes]]
+  (:require [gloss
+             [io :as io]]
+            [gloss.core.protocols :refer [Reader read-bytes]]
             [gloss.data.bytes
              [core :refer [BufferSequence create-buf-seq take-bytes drop-bytes byte-count]]
-             [delimited :refer [buf->string]]])
+             [delimited :refer [buf->string]]]
+            [manifold.stream :as s])
   (:import [java.nio ByteBuffer]))
 
 (def tn-iac 0xff)
@@ -144,3 +147,18 @@
           (if-let [[result remain] (split-line buf-seq)]
             [true result remain]
             [false this buf-seq]))))))
+
+(defn wrap-stream
+  [s on-packet]
+  (let [out (s/stream)]
+    (s/connect
+      (s/map identity out) ; TODO encode telnet commands 
+      s)
+    (let [spliced 
+          (s/splice 
+            out
+            (io/decode-stream s telnet-protocol))]
+      (s/consume
+        #(on-packet s %)
+        spliced)
+      spliced)))
