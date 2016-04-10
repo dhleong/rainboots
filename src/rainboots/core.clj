@@ -1,4 +1,6 @@
-(ns rainboots.core
+(ns ^{:author "Daniel Leong"
+      :doc "Core interface"} 
+  rainboots.core
   (:require [aleph.tcp :as tcp]
             [manifold.stream :as s]
             [rainboots
@@ -61,9 +63,11 @@
          (not (nil? on-cmd))]}
   (let [obj (atom {:connected (atom [])})
         svr (tcp/start-server 
-              (partial handler obj (assoc opts
-                                          :on-disconnect on-disconnect
-                                          :on-telnet on-telnet)) 
+              (partial 
+                handler obj 
+                (assoc opts
+                       :on-disconnect on-disconnect
+                       :on-telnet on-telnet)) 
               opts)]
     (swap! obj assoc :closable svr)
     obj))
@@ -79,5 +83,10 @@
 (defn send!
   "Send text to the client"
   [cli & body]
-  (try
-    (s/put! (:stream @cli) (apply str body))))
+  (let [s (:stream @cli)]
+    (doseq [p body]
+      (if (vector? p)
+        (apply send! cli p)
+        (do
+          (println "!!SEND: " p (class p))
+          (s/put! s p))))))

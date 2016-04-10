@@ -1,5 +1,7 @@
 (ns rainboots.sample
-  (:require [rainboots.core :refer :all]))
+  (:require [rainboots
+             [color :refer [ansi]]
+             [core :refer :all]]))
 
 (defn start-sample
   []
@@ -8,9 +10,10 @@
       :port 4321
       :on-connect (fn [cli]
                     (println "! Connected: " cli)
-                    (send! cli "Hello!\nLogin now:"))
+                    (send! cli (ansi :bright-white "Hello!") "\r\nLogin now:\r\n"))
       :on-cmd (fn [cli cmd]
-                (send! cli "You said: " cmd)))))
+                (println "* Received: " cmd)
+                (send! cli "You said: " cmd "\n")))))
 
 (defn stop-sample
   []
