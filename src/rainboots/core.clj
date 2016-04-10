@@ -5,6 +5,7 @@
             [manifold.stream :as s]
             [rainboots
              [color :refer [process-colors]]
+             [command :refer [exec-command]]
              [parse :refer [parse-command]]
              [proto :refer [wrap-stream]]
              [util :refer [log wrap-fn]]]))
@@ -35,6 +36,7 @@
   (let [on-connect (:on-connect opts)
         on-auth (:on-auth opts)
         on-cmd (:on-cmd opts)
+        on-404 (:on-404 opts)
         on-telnet (:on-telnet opts)
         on-disconnect (:on-disconnect opts)
         client (atom {})
@@ -67,6 +69,7 @@
   instead of using this directly."
   [& {:keys [port 
              on-auth on-cmd
+             on-404
              on-connect on-disconnect
              on-telnet] 
       :as opts}] 
@@ -96,21 +99,28 @@
           input from an auth'd client."
   [& {:keys [port 
              on-auth on-cmd 
+             on-404
              on-connect on-disconnect
              on-telnet] 
       :or {port default-port
+           on-404 `(fn [cli# & etc#]
+                     (send! cli# "Huh?"))
            on-disconnect `(constantly nil)
            on-telnet `(constantly nil)}
       :as opts}]
   ;; NB: this lets us call the private function
   ;;  even from a macro:
-  `(#'-start-server
-     :port ~port
-     :on-auth (wrap-fn ~on-auth)
-     :on-connect (wrap-fn ~on-connect)
-     :on-cmd (wrap-fn ~on-cmd)
-     :on-disconnect (wrap-fn ~on-disconnect)
-     :on-telnet (wrap-fn ~on-telnet)))
+  (let [on-cmd (if on-cmd
+                 on-cmd
+                 `(partial exec-command ~on-404))]
+    `(#'-start-server
+       :port ~port
+       :on-auth (wrap-fn ~on-auth)
+       :on-connect (wrap-fn ~on-connect)
+       :on-cmd (wrap-fn ~on-cmd)
+       :on-404 (wrap-fn ~on-404)
+       :on-disconnect (wrap-fn ~on-disconnect)
+       :on-telnet (wrap-fn ~on-telnet))))
 
 (defn stop-server
   [server]
@@ -120,11 +130,18 @@
 ;; Communication
 ;;
 
+(defn close!
+  "Disconnect the client"
+  [cli]
+  (s/close! (:stream @cli)))
+
 (defn send!
   "Send text to the client"
   [cli & body]
-  (let [s (:stream @cli)]
+  (when-let [s (:stream @cli)]
     (doseq [p body]
-      (if (vector? p)
-        (apply send! cli p)
-        (s/put! s (process-colors p))))))
+      (when p
+        (if (vector? p)
+          (apply send! cli p)
+          (s/put! s (process-colors p)))))
+    (s/put! s "\r\n")))

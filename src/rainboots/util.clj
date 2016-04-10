@@ -12,5 +12,5 @@
   and have the changes reflected"
   [fun]
   `(fn [& args#]
-    (apply ~fun args#)))
+     (apply ~fun args#)))
 
