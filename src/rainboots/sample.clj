@@ -4,6 +4,18 @@
              [core :refer :all]
              [util :refer [wrap-fn]]]))
 
+(defn on-auth
+  [cli line]
+  (if-let [u (:user @cli)] 
+    (do
+      ;; NB: check password
+      (println "! Auth:" u)
+      (swap! cli assoc :ch {:name "Joe"
+                            :user u}))
+    (do
+      (println "! User:" line)
+      (swap! cli assoc :user line))))
+
 (defn on-connect
   [cli]
   (println "! Connected: " cli)
@@ -23,6 +35,7 @@
   (def svr 
     (start-server
       :port 4321
+      :on-auth on-auth
       :on-connect on-connect
       :on-telnet on-telnet
       :on-cmd on-cmd)))
