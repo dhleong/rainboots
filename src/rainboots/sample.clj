@@ -39,7 +39,7 @@
   [cli & [dir]]
   (send! cli "You look: " dir))
 
-(defcmd quit
+(defcmd ^:no-abbrv quit
   [cli]
   (send! cli "Goodbye!")
   (close! cli))
