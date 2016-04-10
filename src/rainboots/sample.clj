@@ -14,6 +14,9 @@
   (println "* Received " cmd)
   (send! cli "You said: " cmd "\r\n"))
 
+(defn on-telnet
+  [cli pkt]
+  (println "# Telnet: " pkt))
 
 (defn start-sample
   []
@@ -21,6 +24,7 @@
     (start-server
       :port 4321
       :on-connect on-connect
+      :on-telnet on-telnet
       :on-cmd on-cmd)))
 
 (defn stop-sample

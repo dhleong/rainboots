@@ -27,17 +27,22 @@
   (log "* New Client: " info)
   (let [on-connect (:on-connect opts)
         on-cmd (:on-cmd opts)
+        on-telnet (:on-telnet opts)
         on-disconnect (:on-disconnect opts)
         client (atom {})
         wrapped 
         (wrap-stream
           s 
           (fn [s pkt]
-            (when (string? pkt)
+            (if (string? pkt)
               (with-binds
                 (on-cmd
                   client
-                  (parse-command pkt))))))] 
+                  (parse-command pkt)))
+              (with-binds
+                (on-telnet
+                  client
+                  pkt)))))] 
     (reset! client (make-client wrapped))
     (with-binds
       (on-connect client))

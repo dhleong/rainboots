@@ -5,7 +5,8 @@
              [io :as io]]
             [gloss.core.protocols :refer [Reader read-bytes]]
             [gloss.data.bytes
-             [core :refer [BufferSequence create-buf-seq take-bytes drop-bytes byte-count]]
+             [core :refer [BufferSequence create-buf-seq concat-bytes
+                           take-bytes drop-bytes byte-count]]
              [delimited :refer [buf->string]]]
             [manifold.stream :as s])
   (:import [java.nio ByteBuffer]))
@@ -125,6 +126,13 @@
     [(.trim (buf->string (take-bytes buf-seq new-line)))
      (drop-bytes buf-seq (inc new-line))]))
 
+(defn- concat-buf-seqs
+  [b1 b2]
+  (cond
+    (nil? b1) nil ;; b2 must also be nil
+    (nil? b2) (create-buf-seq b1) ;; easy case
+    :else (concat-bytes b1 b2)))
+
 (def telnet-protocol
   (reify Reader
     (read-bytes [this buf-seq]
@@ -137,11 +145,9 @@
           (map? telnet-code) 
           [true 
            (dissoc telnet-code :before :after) 
-           (create-buf-seq
-             (filter
-               (complement nil?)
-               [(:before telnet-code)
-                (:after telnet-code)]))]
+           (concat-buf-seqs
+             (:before telnet-code)
+             (:after telnet-code))]
           ;; just string. see if there's a newline
           :else
           (if-let [[result remain] (split-line buf-seq)]
