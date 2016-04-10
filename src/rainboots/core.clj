@@ -4,9 +4,10 @@
   (:require [aleph.tcp :as tcp]
             [manifold.stream :as s]
             [rainboots
+             [color :refer [process-colors]]
              [parse :refer [parse-command]]
              [proto :refer [wrap-stream]]
-             [util :refer [log]]]))
+             [util :refer [log wrap-fn]]]))
 
 (def default-port 4321)
 
@@ -49,28 +50,42 @@
 ;; Server control
 ;;
 
-(defn start-server
-  "Start up a server with the provided
-  callbacks and options."
+(defn- -start-server
+  "NB: You should use (start-server)
+  instead of using this directly."
   [& {:keys [port 
              on-connect on-disconnect
              on-cmd on-telnet] 
-      :or {port default-port
-           on-disconnect (constantly nil)
-           on-telnet (constantly nil)}
-      :as opts}]
+      :as opts}] 
   {:pre [(not (nil? on-connect))
          (not (nil? on-cmd))]}
   (let [obj (atom {:connected (atom [])})
         svr (tcp/start-server 
-              (partial 
-                handler obj 
-                (assoc opts
-                       :on-disconnect on-disconnect
-                       :on-telnet on-telnet)) 
+              (partial handler obj opts) 
               opts)]
     (swap! obj assoc :closable svr)
     obj))
+
+(defmacro start-server
+  "Start up a server with the provided
+  callbacks and options. This is a macro
+  so that you can supply function references
+  and still easily update them via repl."
+  [& {:keys [port 
+             on-connect on-disconnect
+             on-cmd on-telnet] 
+      :or {port default-port
+           on-disconnect `(constantly nil)
+           on-telnet `(constantly nil)}
+      :as opts}]
+  ;; NB: this lets us call the private function
+  ;;  even from a macro:
+  `(#'-start-server
+     :port ~port
+     :on-connect (wrap-fn ~on-connect)
+     :on-cmd (wrap-fn ~on-cmd)
+     :on-disconnect (wrap-fn ~on-disconnect)
+     :on-telnet (wrap-fn ~on-telnet)))
 
 (defn stop-server
   [server]
@@ -87,6 +102,4 @@
     (doseq [p body]
       (if (vector? p)
         (apply send! cli p)
-        (do
-          (println "!!SEND: " p (class p))
-          (s/put! s p))))))
+        (s/put! s (process-colors p))))))
