@@ -2,7 +2,7 @@
       :doc "Command definitions"} 
   rainboots.command
   (:require [rainboots
-             [parse :refer [parse-command]]
+             [parse :refer [apply-cmd extract-command]]
              [util :refer [wrap-fn]]]))
 
 (defonce ^:dynamic *commands* (atom {}))
@@ -70,12 +70,10 @@
   on success; calls on-404 and returns false
   on failure"
   [on-404 cli input]
-  (let [parts (parse-command input)
-        cmd (first parts)
-        args (rest parts)]
+  (let [cmd (extract-command input)]
     (if-let [fun (get @*commands* cmd)]
       (do
-        (apply fun cli args)
+        (apply-cmd fun cli input)
         true)
       (do
         (on-404 cli input)
