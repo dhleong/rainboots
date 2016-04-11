@@ -1,6 +1,6 @@
 (ns rainboots.sample
   (:require [rainboots
-             [command :refer [defcmd]]
+             [command :refer [defcmdset defcmd]]
              [color :refer [ansi]]
              [core :refer :all]
              [util :refer [wrap-fn]]]))
@@ -32,12 +32,31 @@
   (println "# Telnet: " pkt))
 
 ;;
+;; Sample command set
+;;
+
+(defcmdset in-buffer
+  (defcmd done
+    [cli]
+    (pop-cmds! cli)
+    (send! cli "Buffer is done!")))
+
+;;
 ;; Commands
 ;;
 
 (defcmd look
   [cli & [dir]]
   (send! cli "You look: " dir))
+
+(defcmd buffer
+  [cli]
+  (push-cmds!
+    cli
+    (fn [_ cli input]
+      (when-not (in-buffer (constantly nil) cli input)
+        (send! cli "You said: " input))))
+  (send! cli "You're in a buffer now!"))
 
 (defcmd ^:no-abbrv quit
   [cli]

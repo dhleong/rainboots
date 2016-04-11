@@ -6,3 +6,11 @@
   (testing "Build-up"
     (is (= ["l" "lo" "loo" "look"]
            (build-up "look")))))
+
+(deftest cmdset-test
+  (defcmd bar [cli] "bar")
+  (defcmdset test-set
+    (defcmd foo [cli] "foo"))
+  (testing "CmdSet is executable"
+    (is (= "bar" (exec-command nil nil "bar")))
+    (is (= "foo" (test-set nil nil "foo")))))

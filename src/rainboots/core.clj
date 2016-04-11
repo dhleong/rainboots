@@ -5,8 +5,7 @@
             [manifold.stream :as s]
             [rainboots
              [color :refer [process-colors]]
-             [command :refer [exec-command]]
-             [parse :refer [parse-command]]
+             [command :refer [default-on-cmd]]
              [proto :refer [wrap-stream]]
              [util :refer [log wrap-fn]]]))
 
@@ -16,7 +15,8 @@
 
 (defn- make-client
   [stream]
-  {:stream stream})
+  {:stream stream
+   :input-stack (atom[])})
 
 (defmacro with-binds
   [& body]
@@ -27,7 +27,7 @@
   "Dispatches incoming lines as appropriate"
   [cli pkt on-auth on-cmd]
   (if (:ch @cli)
-    (on-cmd cli (parse-command pkt))
+    (on-cmd cli pkt)
     (on-auth cli pkt)))
 
 (defn- handler
@@ -53,12 +53,15 @@
               (with-binds
                 (on-telnet client pkt)))))] 
     (reset! client (make-client wrapped))
+    (swap! (:connected @svr) conj client)
     (with-binds
       (on-connect client))
     (s/on-closed
       s
-      #(with-binds
-         (on-disconnect client)))))
+      (fn []
+        (swap! (:connected @svr) disj client)
+        (with-binds
+          (on-disconnect client))))))
 
 ;;
 ;; Server control
@@ -76,7 +79,7 @@
   {:pre [(not (nil? on-connect))
          (not (nil? on-cmd))
          (not (nil? on-auth))]}
-  (let [obj (atom {:connected (atom [])})
+  (let [obj (atom {:connected (atom #{})})
         svr (tcp/start-server 
               (partial handler obj opts) 
               opts)]
@@ -112,7 +115,7 @@
   ;;  even from a macro:
   (let [on-cmd (if on-cmd
                  on-cmd
-                 `(partial exec-command ~on-404))]
+                 `(partial default-on-cmd ~on-404))]
     `(#'-start-server
        :port ~port
        :on-auth (wrap-fn ~on-auth)
@@ -145,3 +148,25 @@
           (apply send! cli p)
           (s/put! s (process-colors p)))))
     (s/put! s "\r\n")))
+
+(defn push-cmds!
+  "Push a new cmdset to the top of the user's
+  input stack. Only function at the top of this
+  stack receives input. This is only meaningful
+  if you haven't provided your own on-cmd handler
+  (but why would you?). 
+  The provided cmd-set can be anything declared 
+  with (defcmdset), or, in fact, any function
+  that looks like (fn [on-404 cli input]), where:
+  `on-404 is the function configured for
+  when a command doesn't exist; 
+  `cli` is the client providing the input; and
+  `input` is the raw String input line"
+  [cli cmd-set]
+  (swap! (:input-stack @cli) conj cmd-set))
+
+(defn pop-cmds!
+  "Pop the top-most cmdset from the user's
+  input stack. See push-cmds!"
+  [cli]
+  (swap! (:input-stack @cli) drop-last))
