@@ -8,9 +8,13 @@
            (build-up "look")))))
 
 (deftest cmdset-test
-  (defcmd bar [cli] "bar")
-  (defcmdset test-set
-    (defcmd foo [cli] "foo"))
-  (testing "CmdSet is executable"
-    (is (= "bar" (exec-command nil nil "bar")))
-    (is (= "foo" (test-set nil nil "foo")))))
+  (let [returned (atom nil)]
+    (defcmd bar [cli] (reset! returned "bar"))
+    (defcmdset test-set
+      (defcmd foo [cli] (reset! returned "foo")))
+    (testing "CmdSet is executable"
+      (is (nil? @returned))
+      (is (true? (exec-command nil nil "bar")))
+      (is (= "bar" @returned))
+      (is (true? (test-set nil nil "foo")))
+      (is (= "foo" @returned)))))

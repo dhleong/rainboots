@@ -23,13 +23,6 @@
   `(binding [*svr* ~'svr]
      ~@body))
 
-(defn on-incoming
-  "Dispatches incoming lines as appropriate"
-  [cli pkt on-auth on-cmd]
-  (if (:ch @cli)
-    (on-cmd cli pkt)
-    (on-auth cli pkt)))
-
 (defn- handler
   [svr opts s info]
   (log "* New Client: " info)
@@ -44,14 +37,16 @@
         (wrap-stream
           s 
           (fn [s pkt]
-            (if (string? pkt)
-              ;; string pkt
-              (with-binds
-                (on-incoming client pkt 
-                             on-auth on-cmd))
-              ;; telnet pkt
-              (with-binds
-                (on-telnet client pkt)))))] 
+            (with-binds
+             (if (string? pkt)
+               ;; string pkt...
+               (if (:ch @client)
+                 ;; logged in; use cmd handler
+                 (on-cmd client pkt)
+                 ;; need auth still
+                 (on-auth client pkt))
+               ;; simple; telnet pkt
+               (on-telnet client pkt)))))] 
     (reset! client (make-client wrapped))
     (swap! (:connected @svr) conj client)
     (with-binds
