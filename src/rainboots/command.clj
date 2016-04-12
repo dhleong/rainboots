@@ -13,6 +13,16 @@
     #(subs string 0 %)
     (range 1 (inc (count string)))))
 
+(defn cmd-meta
+  "Extract meta information for a command 
+  function, given its var"
+  [fun]
+  (let [m (meta fun)
+        args (first (:arglists m))]
+    {:name (-> m :name str)
+     :doc (-> m :doc)
+     :arg-types (map meta (drop 1 args))}))
+
 (defmacro defcmdset
   "Declare a command set. Command sets
   can be pushed and popped.
@@ -43,8 +53,18 @@
   the full name; otherwise, abbreviations
   will be generated starting from the first
   letter, then the first two letters, and so on."
-  [cmd-name argv & body]
-  (let [no-abbrv? (:no-abbrv (meta cmd-name))
+  [cmd-name & decl]
+  (let [has-doc? (string? (first decl))
+        doc (if has-doc?
+              (first decl)
+              "")
+        argv (if has-doc?
+               (second decl)
+               (first decl))
+        body (if has-doc?
+               (drop 2 decl)
+               (rest decl))
+        no-abbrv? (:no-abbrv (meta cmd-name))
         fn-name (str cmd-name) ;; let's just use it directly
         fn-var (symbol fn-name)
         invoke (str cmd-name)
@@ -52,9 +72,12 @@
                       [invoke]
                       (build-up invoke))]
     `(let [defd-fn# (defn ~fn-var
+                      ~doc
                       ~argv
                       ~@body)
-           ~'wrapped (wrap-fn ~fn-var)]
+           ~'wrapped (with-meta 
+                       (wrap-fn ~fn-var)
+                       (cmd-meta (var ~fn-var)))]
        (swap! *commands* 
               assoc 
               ~@(mapcat

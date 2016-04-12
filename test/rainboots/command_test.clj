@@ -18,3 +18,15 @@
       (is (= "bar" @returned))
       (is (true? (test-set nil nil "foo")))
       (is (= "foo" @returned)))))
+
+(deftest cmd-meta-test
+  (defn cmd-meta-test-cmd-fn
+    "Test function"
+    [cli ^:item item ^:eq equip]
+    nil)
+  (let [m (cmd-meta (var cmd-meta-test-cmd-fn))
+        args (:arg-types m)]
+    (is (= "cmd-meta-test-cmd-fn" (:name m)))
+    (is (= "Test function" (:doc m)))
+    (is (= {:item true} (first args)))
+    (is (= {:eq true} (second args)))))
