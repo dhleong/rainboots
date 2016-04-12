@@ -1,15 +1,68 @@
 (ns rainboots.parse-test
   (:require [clojure.test :refer :all]
-            [rainboots.parse :refer :all]))
+            [rainboots
+             [command :refer [*commands* defcmdset defcmd exec-command]]
+             [parse :refer :all]]))
 
 (deftest extract-command-test
   (testing "Single command"
-    (is (= "look" (extract-command "look")))
-    (is (= "look" (extract-command " look")))
-    (is (= "look" (extract-command " look "))))
+    (is (= ["look" nil] (extract-command "look")))
+    (is (= ["look" nil] (extract-command " look")))
+    (is (= ["look" nil] (extract-command " look "))))
   (testing "Command with arg"
-    (is (= "look" (extract-command "look e")))))
+    (is (= ["look" "e"] (extract-command "look e")))))
 
-(deftest apply-cmd-test
-  (testing "Basic arg splitting"
-    (is (= "there" (apply-cmd #(identity %2) nil "look there")))))
+(deftest expand-args-test
+  (testing "Expand basic types"
+    (is (= ["one"] (expand-args :cli "one" [nil])))
+    (is (= ["one" "two"] 
+           (expand-args :cli "one  two " [nil nil]))))
+  (testing "Mixed types"
+    (binding [*arg-types* (atom {nil default-argtype-handler})]
+      (defargtype :read2
+        "Reads two words as one arg"
+        [cli input]
+        (let [m (re-seq #"(\S+\s+\S+)(\S*.*)$" input)]
+          (-> m first rest)))
+      (is (= ["one  two"] 
+             (expand-args :cli "one  two " [:read2])))
+      (is (= ["one  two" "three"] 
+             (expand-args :cli "one  two three" [:read2 nil])))
+      (is (= ["one" "two three"] 
+             (expand-args :cli "one  two three" [nil :read2]))))))
+
+(deftest argtype-test
+  (testing "Default handler"
+    (is (= ["first" "second  third"]
+           (default-argtype-handler 
+             nil "first   second  third")))
+    (is (= ["second" "third"]
+           (default-argtype-handler 
+             nil "second  third")))
+    (is (= ["third" nil]
+           (default-argtype-handler 
+             nil "third")))
+    ;; TODO probably, support quoted strings
+    )
+  ;
+  (binding [*arg-types* (atom {})
+            *commands* (atom {})] 
+    (testing "Declare"
+      (defargtype :item
+        "An item usage"
+        [cli input]
+        [(str "ITEM:" 
+              (first 
+                (clojure.string/split input #" +")))
+         nil]) ;; lazy
+      (is (fn? (:item @*arg-types*))))
+    (testing "Use"
+      (let [result (atom nil)]
+        (defcmd argtype-test-cmd
+          [cli ^:item item]
+          (println "the-item=" item)
+          (reset! result item))
+        (exec-command :404 :cli "argtype foo")
+        (is (= "ITEM:foo" @result))))))
+
+

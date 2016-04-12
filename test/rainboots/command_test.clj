@@ -9,24 +9,27 @@
 
 (deftest cmdset-test
   (let [returned (atom nil)]
-    (defcmd bar [cli] (reset! returned "bar"))
-    (defcmdset test-set
-      (defcmd foo [cli] (reset! returned "foo")))
-    (testing "CmdSet is executable"
-      (is (nil? @returned))
-      (is (true? (exec-command nil nil "bar")))
-      (is (= "bar" @returned))
-      (is (true? (test-set nil nil "foo")))
-      (is (= "foo" @returned)))))
+    (binding [*commands* (atom {})]
+      (defcmd bar [cli] (reset! returned "bar"))
+      (defcmdset test-set
+        (defcmd foo [cli] (reset! returned "foo")))
+      (testing "CmdSet is executable"
+        (is (nil? @returned))
+        (is (true? (exec-command nil nil "bar")))
+        (is (= "bar" @returned))
+        (is (true? (test-set nil nil "foo")))
+        (is (= "foo" @returned))))))
 
 (deftest cmd-meta-test
   (defn cmd-meta-test-cmd-fn
     "Test function"
-    [cli ^:item item ^:eq equip]
+    [cli ^:item item ^:eq equip text]
     nil)
   (let [m (cmd-meta (var cmd-meta-test-cmd-fn))
         args (:arg-types m)]
     (is (= "cmd-meta-test-cmd-fn" (:name m)))
     (is (= "Test function" (:doc m)))
-    (is (= {:item true} (first args)))
-    (is (= {:eq true} (second args)))))
+    (is (= :item (first args)))
+    (is (= :eq (second args)))
+    (is (= nil (last args)))))
+

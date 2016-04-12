@@ -7,6 +7,10 @@
 
 (defonce ^:dynamic *commands* (atom {}))
 
+;;
+;; Util methods
+;;
+
 (defn build-up
   [string]
   (map
@@ -21,7 +25,13 @@
         args (first (:arglists m))]
     {:name (-> m :name str)
      :doc (-> m :doc)
-     :arg-types (map meta (drop 1 args))}))
+     :arg-types (map 
+                  (comp first keys meta) 
+                  (drop 1 args))}))
+
+;;
+;; Public interface
+;;
 
 (defmacro defcmdset
   "Declare a command set. Command sets
@@ -93,10 +103,10 @@
   on success; calls on-404 and returns false
   on failure"
   [on-404 cli input]
-  (let [cmd (extract-command input)]
+  (let [[cmd args] (extract-command input)]
     (if-let [fun (get @*commands* cmd)]
       (do
-        (apply-cmd fun cli input)
+        (apply-cmd fun cli args)
         true)
       (do
         (on-404 cli input)
