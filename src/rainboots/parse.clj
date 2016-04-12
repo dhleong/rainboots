@@ -32,6 +32,7 @@
   arguments as appropriate with any annotated
   argtypes. See (defargtype)"
   [cmd-fn cli raw-args]
+  ;; TODO support [cli &rest] input, for example
   (let [arg-types (:arg-types (meta cmd-fn))]
     (if (empty? arg-types)
       ;; easy case
