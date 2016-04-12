@@ -79,6 +79,13 @@
               (partial handler obj opts) 
               opts)]
     (swap! obj assoc :closable svr)
+    ;; re-def dynamically so there's some
+    ;;  default value for use in REPL; handlers
+    ;;  should always get the correct instance
+    ;;  thanks to use of (binding) above (although
+    ;;  I'm not sure why you'd start more than one
+    ;;  server in the same JVM, anyway....)
+    (def ^:dynamic *svr* obj)
     obj))
 
 (defmacro start-server
@@ -143,6 +150,13 @@
           (apply send! cli p)
           (s/put! s (process-colors p)))))
     (s/put! s "\r\n")))
+
+(defn send-all!
+  "Send text to every connected client"
+  [& body]
+  (when-let [clients (seq @(:connected @*svr*))]
+    (doseq [cli clients]
+      (apply send! cli body))))
 
 (defn push-cmds!
   "Push a new cmdset to the top of the user's
