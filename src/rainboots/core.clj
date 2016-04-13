@@ -151,12 +151,19 @@
           (s/put! s (process-colors p)))))
     (s/put! s "\r\n")))
 
+(defn send-if!
+  "Send text to every connected client
+  for which (pred cli) returns true."
+  [pred & body]
+  (when-let [clients (seq @(:connected @*svr*))]
+    (doseq [cli clients]
+      (when (pred cli)
+        (apply send! cli body)))))
+
 (defn send-all!
   "Send text to every connected client"
   [& body]
-  (when-let [clients (seq @(:connected @*svr*))]
-    (doseq [cli clients]
-      (apply send! cli body))))
+  (apply send-if! (constantly true) body))
 
 (defn push-cmds!
   "Push a new cmdset to the top of the user's
