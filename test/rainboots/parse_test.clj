@@ -60,7 +60,6 @@
       (let [result (atom nil)]
         (defcmd argtype-test-cmd
           [cli ^:item item]
-          (println "the-item=" item)
           (reset! result item))
         (exec-command :404 :cli "argtype foo")
         (is (= "ITEM:foo" @result))))))

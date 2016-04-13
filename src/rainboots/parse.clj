@@ -3,7 +3,16 @@
   rainboots.parse
   (:require [clojure.string :refer [split]]))
 
-(declare default-argtype-handler)
+(defn default-argtype-handler
+  [cli input]
+  (let [[full value] 
+        (first
+          (re-seq #"(\S+)(\s+|$)" input))
+        full-len (count full)
+        remaining (when (< full-len (count input))
+                    (subs input full-len))]
+    ; TODO probably, support quoted strings
+    [value remaining]))
 
 (defonce ^:dynamic *arg-types* 
   ;; we include a default arg type
@@ -38,17 +47,6 @@
       (cmd-fn cli)
       (let [args (expand-args cli raw-args arg-types)]
         (apply cmd-fn cli args)))))
-
-(defn default-argtype-handler
-  [cli input]
-  (let [[full value] 
-        (first
-          (re-seq #"(\S+)(\s+|$)" input))
-        full-len (count full)
-        remaining (when (< full-len (count input))
-                    (subs input full-len))]
-    ; TODO probably, support quoted strings
-    [value remaining]))
 
 (defn extract-command 
   "Splits input into [cmd, REST], where `cmd` is
