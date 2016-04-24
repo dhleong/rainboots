@@ -185,4 +185,4 @@
   "Pop the top-most cmdset from the user's
   input stack. See push-cmds!"
   [cli]
-  (swap! (:input-stack @cli) drop-last))
+  (swap! (:input-stack @cli) pop))
