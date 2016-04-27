@@ -48,6 +48,9 @@
 (def ansi-clear1
   (ansi1 39))
 
+(def color-seq-regex
+    #"\{([{ndrgybpcwNDRGYBPCW])")
+
 (defmacro ansi-int
   "Wrap some text in ansi"
   [color & body]
@@ -83,8 +86,22 @@
   [input]
   (string/replace
     input
-    #"\{([{ndrgybpcwNDRGYBPCW])"
+    color-seq-regex
     #(let [arg (second %)]
        (if (= "{" arg)
          "{" ;; strip the dup char
          (apply ansi2 (get color-sequences arg))))))
+
+(defn strip-colors
+  "Given a string, strip out color sequences.
+  This should be used for clients that don't
+  support ansi. See `process-colors` for 
+  color sequences"
+  [input]
+  (string/replace
+    input
+    color-seq-regex
+    #(let [arg (second %)]
+       (if (= "{" arg)
+         "{" ;; strip the dup char
+         "")))) ;; strip the whole sequence
