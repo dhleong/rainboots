@@ -3,6 +3,7 @@
              [command :refer [defcmdset defcmd]]
              [color :refer [ansi]]
              [core :refer :all]
+             [proto :refer [tn-iac tn-do tn-op-ttype]]
              [util :refer [wrap-fn]]]))
 
 (defn on-auth
@@ -25,11 +26,19 @@
 (defn on-connect
   [cli]
   (println "! Connected: " cli)
+  (send! cli {:telnet :do
+              :opt :term-type})
   (send! cli "{WHello!" "\r\n{yLogin {Gnow:{n"))
 
 (defn on-telnet
   [cli pkt]
-  (println "# Telnet: " pkt))
+  (println "# Telnet: " pkt)
+  ;; TODO we can probably build this into the lib
+  (when (= {:telnet :will
+            :opt :term-type} pkt)
+    (println "! Will term type! Requesting...")
+    (send! cli {:telnet :term-type
+                :opt [1]})))
 
 ;;
 ;; Sample command set

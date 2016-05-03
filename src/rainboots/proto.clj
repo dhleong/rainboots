@@ -47,7 +47,11 @@
    tn-op-ttype :term-type
    })
 
-(defn- unsigned-get
+(def tn-keys
+  (zipmap (vals tn-codes)
+          (keys tn-codes)))
+
+(defn unsigned-get
   [^ByteBuffer buffer idx]
   (let [raw (.get buffer idx)]
     (int (bit-and raw 0xFF))))
@@ -113,6 +117,8 @@
         (let [code (nth-byte buf-seq code-idx)
               has-opt? (has-opt? code)
               has-sub? (has-sub? code)
+              ;; FIXME actually, we should ensure this
+              ;;  is proceeded by tn-iac
               sub-end (when has-sub?
                         (index-of buf-seq tn-se))]
           (when-not (= tn-iac code)
@@ -125,10 +131,11 @@
               :-incomplete
               ;; has an option, and not incomplete
               has-opt?
-              {:telnet (get tn-codes code code)
-               :opt (nth-byte buf-seq opt-idx)
-               :before (take-bytes buf-seq iac-idx)
-               :after (drop-bytes buf-seq (inc opt-idx))}
+              (let [opt-byte (nth-byte buf-seq opt-idx)]
+                {:telnet (get tn-codes code code)
+                 :opt (get tn-codes opt-byte opt-byte)
+                 :before (take-bytes buf-seq iac-idx)
+                 :after (drop-bytes buf-seq (inc opt-idx))})
               ;; has a subnegotiation, and not incomplete
               has-sub?
               {:telnet (get tn-codes 
@@ -136,11 +143,13 @@
                             code)
                :opt (-> buf-seq
                         (drop-bytes (inc opt-idx))
-                        (take-bytes (min
-                                      max-sub-bytes
-                                      (- sub-end
-                                         opt-idx
-                                         1)))
+                        (take-bytes 
+                          (min
+                            max-sub-bytes
+                            (- sub-end
+                               opt-idx
+                               ;; drop tn-iac/tn-se
+                               2)))
                         buf->string)
                :before (take-bytes buf-seq iac-idx)
                :after (drop-bytes buf-seq (inc sub-end))}
@@ -188,11 +197,50 @@
             [true result remain]
             [false this buf-seq]))))))
 
+(defn- ->bytes
+  [& items]
+  (->> items
+       (map #(if (string? %)
+               (seq (.getBytes %))
+               %))
+       flatten
+       byte-array))
+
+(defn- map->pkt
+  [m]
+  {:pre [(map? m)]}
+  (let [kind (get tn-keys (:telnet m) (:telnet m))
+        opt (get tn-keys (:opt m) (:opt m))]
+    (cond
+      ;; no :telnet key; must be, eg: {:will :term-type} 
+      (not kind)
+      ;; TODO support this
+      (throw (IllegalArgumentException.
+               (str "Invalid telnet map: " m)))
+      ;; simple
+      (nil? opt)
+      (->bytes tn-iac kind)
+      ;; subnegotiation
+      (or (string? opt)
+          (vector? opt))
+      (->bytes tn-iac tn-sb kind opt tn-iac tn-se)
+      ;; simple option
+      :else
+      (->bytes tn-iac kind opt))))
+
+(defn encode-packet
+  [pkt]
+  (if (map? pkt)
+    ;; encode to a byte array
+    (map->pkt pkt)
+    ;; just let it be
+    pkt))
+
 (defn wrap-stream
   [s on-packet]
   (let [out (s/stream)]
     (s/connect
-      (s/map identity out) ; TODO encode telnet commands 
+      (s/map encode-packet out) 
       s)
     (let [spliced 
           (s/splice 

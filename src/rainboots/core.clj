@@ -6,7 +6,7 @@
             [rainboots
              [color :refer [process-colors]]
              [command :refer [default-on-cmd]]
-             [proto :refer [wrap-stream]]
+             [proto :refer [tn-iac wrap-stream]]
              [util :refer [log wrap-fn]]]))
 
 (def default-port 4321)
@@ -149,7 +149,8 @@
   and the result sent as if it were passed directly.
   Strings, and any string returned by a function argument
   or in a vector, will be processed for color sequences
-  (see the colors module)"
+  (see the colors module).
+  Maps will be treated as telnet sequences (see telnet!)"
   [cli & body]
   (when-let [s (:stream @cli)]
     (doseq [p body]
@@ -157,6 +158,7 @@
         (condp #(%1 %2) p
           vector? (apply send! cli p)
           string? (s/put! s (process-colors p))
+          map? (s/put! s p)
           fn? (send! cli (p cli)))))
     (s/put! s "\r\n")))
 
@@ -175,6 +177,26 @@
   a convenience function."
   [& body]
   (apply send-if! (constantly true) body))
+
+(defn telnet!
+  "Send a telnet map (like thsoe received in :on-telnet)
+  or a vector of raw bytes as a telnet instruction. Telnet
+  maps can also be sent using (send!) for convenience."
+  [cli telnet]
+  (when-let [s (:stream @cli)]
+    (cond
+      ;; raw bytes vector
+      (and (vector? telnet)
+           (= tn-iac (first telnet)))
+      (s/put! s (byte-array telnet))
+      ;; improper telnet sequence
+      (vector? telnet)
+      (throw (IllegalArgumentException.
+               (str "Telnet byte sequences must start"
+                    "with tn-iac constant")))
+      ;; it's a map; the protocol will handle it
+      (map? telnet)
+      (s/put! s telnet))))
 
 (defn push-cmds!
   "Push a new cmdset to the top of the user's
