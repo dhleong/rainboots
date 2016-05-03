@@ -72,7 +72,19 @@
              (to-seq
                [(int \h) (int \e) 
                 tn-iac tn-nop
-                (int \l) (int \l) (int \o)]))))))
+                (int \l) (int \l) (int \o)])))))
+  ;
+  (testing "Subnegotiation sequence"
+    (is (= {:telnet :term-type
+            :opt "serenitty" ; puns :)
+            :before nil
+            :after nil}
+           (read-telnet-code
+             (to-seq [tn-iac tn-sb tn-op-ttype
+                      (int \s) (int \e) (int \r)
+                      (int \e) (int \n) (int \i)
+                      (int \t) (int \t) (int \y)
+                      tn-se]))))))
 
 (deftest split-line-test
   (testing "No newline gets nil"

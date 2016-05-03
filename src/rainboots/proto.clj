@@ -11,8 +11,12 @@
             [manifold.stream :as s])
   (:import [java.nio ByteBuffer]))
 
+;; shouldn't need more than this for subnegotiation
+(def max-sub-bytes 1024)
+
 (def tn-iac 0xff)
-(def tn-se 240)
+(def tn-sb 250) ; subnegotiation begin
+(def tn-se 240) ; subnegotiation end
 (def tn-nop 241)
 (def tn-data-mark 242)
 (def tn-break 243)
@@ -25,9 +29,11 @@
 
 ;; option codes for will/wont/etc
 (def tn-op-echo 1)
+(def tn-op-ttype 24) ; terminal type
 
 (def tn-codes
-  {tn-se :se
+  {tn-sb :sb
+   tn-se :se
    tn-nop :nop
    tn-data-mark :data-mark
    tn-break :break
@@ -36,7 +42,10 @@
    tn-will :will
    tn-wont :wont
    tn-do :do
-   tn-dont :dont})
+   tn-dont :dont
+   ;
+   tn-op-ttype :term-type
+   })
 
 (defn- unsigned-get
   [^ByteBuffer buffer idx]
@@ -83,6 +92,10 @@
     (251 252 253 254) true
     false))
 
+(defn- has-sub?
+  [tn-code]
+  (= tn-sb tn-code))
+
 (defn read-telnet-code
   "Given a sequence of bytes, attempt to find a telnet
   escape command sequence. If we found what might be an
@@ -98,11 +111,17 @@
       (if (<= buf-count code-idx)
         :-incomplete
         (let [code (nth-byte buf-seq code-idx)
-              has-opt? (has-opt? code)]
+              has-opt? (has-opt? code)
+              has-sub? (has-sub? code)
+              sub-end (when has-sub?
+                        (index-of buf-seq tn-se))]
           (when-not (= tn-iac code)
             (cond
               (and has-opt?
                    (<= buf-count opt-idx))
+              :-incomplete
+              (and has-sub?
+                   (nil? sub-end))
               :-incomplete
               ;; has an option, and not incomplete
               has-opt?
@@ -110,6 +129,21 @@
                :opt (nth-byte buf-seq opt-idx)
                :before (take-bytes buf-seq iac-idx)
                :after (drop-bytes buf-seq (inc opt-idx))}
+              ;; has a subnegotiation, and not incomplete
+              has-sub?
+              {:telnet (get tn-codes 
+                            (nth-byte buf-seq opt-idx)
+                            code)
+               :opt (-> buf-seq
+                        (drop-bytes (inc opt-idx))
+                        (take-bytes (min
+                                      max-sub-bytes
+                                      (- sub-end
+                                         opt-idx
+                                         1)))
+                        buf->string)
+               :before (take-bytes buf-seq iac-idx)
+               :after (drop-bytes buf-seq (inc sub-end))}
               ;; simple
               :else
               {:telnet (get tn-codes code code)
