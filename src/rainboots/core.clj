@@ -16,12 +16,35 @@
 (defn- make-client
   [stream]
   {:stream stream
+   :term-types #{}
    :input-stack (atom[])})
 
 (defmacro with-binds
   [& body]
   `(binding [*svr* ~'svr]
      ~@body))
+
+(defn- handle-telnet
+  [cli pkt fallback]
+  (cond
+    ;; the client can send term type! request it
+    (= {:telnet :will 
+        :opt :term-type} pkt)
+    (send! cli {:telnet :term-type
+                :opt [:send]})
+    ;; the client is sending their term type
+    (= :term-type (:telnet pkt))
+    (if-not (contains? (:term-types @cli) (:opt pkt))
+      (do
+        ;; another new term type; keep requesting until
+        ;;  we know them all
+        (swap! cli update :term-types conj (:opt pkt))
+        (send! cli {:telnet :term-type :opt [:send]}))
+      ;; we've got 'em all (TODO preprocess for color?)
+      (log "* Client term types: " (:term-types @cli)))
+    ;; else, let the provided callback handle
+    :else
+    (fallback cli pkt)))
 
 (defn- handler
   [svr opts s info]
@@ -46,7 +69,7 @@
                  ;; need auth still
                  (on-auth client pkt))
                ;; simple; telnet pkt
-               (on-telnet client pkt)))))] 
+               (handle-telnet client pkt on-telnet)))))] 
     (reset! client (make-client wrapped))
     (swap! (:connected @svr) conj client)
     (with-binds
@@ -56,7 +79,13 @@
       (fn []
         (swap! (:connected @svr) disj client)
         (with-binds
-          (on-disconnect client))))))
+          (on-disconnect client))))
+    ;; request terminal type
+    ;; TODO we could be more generic about this
+    ;; (include a set of things we'll ":do" in
+    ;; the server opts)
+    (send! client {:telnet :do
+                   :opt :term-type})))
 
 ;;
 ;; Server control
