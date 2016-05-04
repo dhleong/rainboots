@@ -13,6 +13,8 @@
 
 (def ^:dynamic *svr*)
 
+(declare telnet!)
+
 (defn- make-client
   [stream]
   {:stream stream
@@ -30,7 +32,7 @@
     ;; the client can send term type! request it
     (= {:telnet :will 
         :opt :term-type} pkt)
-    (send! cli {:telnet :term-type
+    (telnet! cli {:telnet :term-type
                 :opt [:send]})
     ;; the client is sending their term type
     (= :term-type (:telnet pkt))
@@ -39,7 +41,7 @@
         ;; another new term type; keep requesting until
         ;;  we know them all
         (swap! cli update :term-types conj (:opt pkt))
-        (send! cli {:telnet :term-type :opt [:send]}))
+        (telnet! cli {:telnet :term-type :opt [:send]}))
       ;; we've got 'em all (TODO preprocess for color?)
       (log "* Client term types: " (:term-types @cli)))
     ;; else, let the provided callback handle
@@ -84,8 +86,8 @@
     ;; TODO we could be more generic about this
     ;; (include a set of things we'll ":do" in
     ;; the server opts)
-    (send! client {:telnet :do
-                   :opt :term-type})))
+    (telnet! client {:telnet :do
+                     :opt :term-type})))
 
 ;;
 ;; Server control
@@ -210,7 +212,10 @@
 (defn telnet!
   "Send a telnet map (like thsoe received in :on-telnet)
   or a vector of raw bytes as a telnet instruction. Telnet
-  maps can also be sent using (send!) for convenience."
+  maps can also be sent using (send!) for convenience;
+  note, however, that send! appends an '\\r\\n' sequence
+  to whatever is passed, so if you ONLY want to send a
+  telnet sequence, this is the way to go."
   [cli telnet]
   (when-let [s (:stream @cli)]
     (cond
