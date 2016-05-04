@@ -65,6 +65,28 @@
       `[(ansi2 ~@code) ~@body ansi-clear1]
       `(ansi-int ~code ~@body))))
 
+(defn determine-colors
+  "Determine what colors the client supports
+  (if any) and update the :colors field on the
+  client object accordingly. If the field is
+  already non-nil, this is a nop (since the
+  lib user might want to handle this themself
+  with a user pref, for example)"
+  [cli]
+  (let [{:keys [colors term-types]} @cli
+        lower-types (map string/lower-case term-types)
+        has-256? (some
+               #(string/includes? % "256")
+               lower-types)
+        ansi? (some 
+                #(string/includes? % "ansi")
+                lower-types)]
+    ;; NB don't override existing colors
+    (when-not (and colors
+                   (or has-256? ansi?))
+      ;; TODO if we support 256, indicate availability
+      (swap! cli update :colors (constantly :ansi)))))
+
 (defn process-colors
   "Given a string, replace color sequences
   with the appropriate ansi. We use the

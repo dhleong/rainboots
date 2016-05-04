@@ -23,3 +23,10 @@
            (strip-colors "{WWhite{YYellow")))
     (is (= "{fNot{AColor"
            (strip-colors "{fNot{AColor")))))
+
+(deftest determine-colors-test
+  (testing "ANSI"
+    (let [cli (atom {:term-types #{"SomeMud"
+                                   "ANSI"}})]
+      (determine-colors cli)
+      (is (= :ansi (:colors @cli))))))

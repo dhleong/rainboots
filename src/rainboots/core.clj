@@ -4,7 +4,7 @@
   (:require [aleph.tcp :as tcp]
             [manifold.stream :as s]
             [rainboots
-             [color :refer [process-colors]]
+             [color :refer [determine-colors process-colors]]
              [command :refer [default-on-cmd]]
              [proto :refer [tn-iac wrap-stream]]
              [util :refer [log wrap-fn]]]))
@@ -45,8 +45,8 @@
         ;;  we know them all
         (swap! cli update :term-types conj (:opt pkt))
         (telnet! cli {:telnet :term-type :opt [:send]}))
-      ;; we've got 'em all (TODO preprocess for color?)
-      (log "* Client term types: " (:term-types @cli)))
+      ;; we've got 'em all; preprocess for color
+      (determine-colors cli))
     (= :will (:telnet pkt))
     (if (contains? accepted-opts (:opt pkt))
       (telnet! cli {:telnet :do :opt (:opt pkt)})
