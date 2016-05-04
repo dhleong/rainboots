@@ -32,6 +32,7 @@
 ;; option codes for will/wont/etc
 (def tn-op-echo 1)
 (def tn-op-ttype 24) ; terminal type
+(def tn-op-naws 31) ; window size
 
 (def tn-codes
   {tn-sb :sb
@@ -48,6 +49,7 @@
    ;
    tn-op-echo :echo
    tn-op-ttype :term-type
+   tn-op-naws :window-size
    })
 
 (def tn-keys
@@ -176,8 +178,8 @@
 (defn- concat-buf-seqs
   [b1 b2]
   (cond
-    (nil? b1) nil ;; b2 must also be nil
-    (nil? b2) (create-buf-seq b1) ;; easy case
+    (nil? b1) (create-buf-seq b2)
+    (nil? b2) (create-buf-seq b1)
     :else (concat-bytes b1 b2)))
 
 (def telnet-protocol

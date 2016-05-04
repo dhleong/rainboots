@@ -1,6 +1,7 @@
 (ns rainboots.proto-test
   (:require [clojure.test :refer :all]
-            [gloss.data.bytes.core :refer [create-buf-seq]]
+            [gloss.data.bytes.core :refer [concat-bytes
+                                           create-buf-seq]]
             [rainboots.proto :refer :all]
             [manifold.stream :as s])
   (:import [java.nio ByteBuffer]))
@@ -37,7 +38,17 @@
     (is (= 0
            (index-of 
              (to-seq [42])
-             42)))))
+             42))))
+  (testing "Double Sequence"
+    (let [bseq (concat-bytes
+                 (to-seq [42])
+                 (to-seq [91]))]
+      (is (= 0 (index-of bseq 42)))
+      (is (= 1 (index-of bseq 91))))
+    (let [bseq (concat-bytes
+                 (to-seq [])
+                 (to-seq [42]))]
+      (is (= 0 (index-of bseq 42))))))
 
 (deftest telnet-test
   (testing "Incomplete sequence ONLY"
@@ -65,6 +76,14 @@
             :before nil}
            (read-telnet-code
              (to-seq [tn-iac tn-will tn-op-ttype])))))
+  (testing "Mutli sequence"
+    (is (= {:telnet :will
+            :opt :term-type
+            :after (to-seq [tn-iac tn-will tn-op-naws])
+            :before nil}
+           (read-telnet-code
+             (to-seq [tn-iac tn-will tn-op-ttype
+                      tn-iac tn-will tn-op-naws])))))
   (testing "IAC+IAC is nil"
     (is (nil? (read-telnet-code
                 (to-seq [tn-iac tn-iac])))))
@@ -197,4 +216,20 @@
     (with-stream
       (put! tn-iac tn-will tn-op-echo)
       (is (= {:telnet :will :opt :echo} 
-             (take!))))))
+             (take!)))))
+  (testing "Two, separate telnet codes"
+    (with-stream
+      (put! tn-iac tn-will tn-op-naws)
+      (put! tn-iac tn-will tn-op-ttype)
+      (is (= {:telnet :will
+              :opt :window-size} (take!)))
+      (is (= {:telnet :will
+              :opt :term-type} (take!)))))
+  (testing "Two telnet codes together"
+    (with-stream
+      (put! tn-iac tn-will tn-op-naws
+            tn-iac tn-will tn-op-ttype)
+      (is (= {:telnet :will
+              :opt :window-size} (take!)))
+      (is (= {:telnet :will
+              :opt :term-type} (take!))))))

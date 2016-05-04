@@ -26,14 +26,17 @@
   `(binding [*svr* ~'svr]
      ~@body))
 
+(def default-telnet-opts
+  #{:term-type})
+
 (defn- handle-telnet
-  [cli pkt fallback]
+  [cli pkt accepted-opts fallback]
   (cond
     ;; the client can send term type! request it
     (= {:telnet :will 
         :opt :term-type} pkt)
     (telnet! cli {:telnet :term-type
-                :opt [:send]})
+                  :opt [:send]})
     ;; the client is sending their term type
     (= :term-type (:telnet pkt))
     (if-not (contains? (:term-types @cli) (:opt pkt))
@@ -44,6 +47,10 @@
         (telnet! cli {:telnet :term-type :opt [:send]}))
       ;; we've got 'em all (TODO preprocess for color?)
       (log "* Client term types: " (:term-types @cli)))
+    (= :will (:telnet pkt))
+    (if (contains? accepted-opts (:opt pkt))
+      (telnet! cli {:telnet :do :opt (:opt pkt)})
+      (telnet! cli {:telnet :wont :opt (:opt pkt)}))
     ;; else, let the provided callback handle
     :else
     (fallback cli pkt)))
@@ -55,6 +62,7 @@
         on-auth (:on-auth opts)
         on-cmd (:on-cmd opts)
         on-404 (:on-404 opts)
+        telnet-opts (:telnet-opts opts)
         on-telnet (:on-telnet opts)
         on-disconnect (:on-disconnect opts)
         client (atom {})
@@ -71,7 +79,8 @@
                  ;; need auth still
                  (on-auth client pkt))
                ;; simple; telnet pkt
-               (handle-telnet client pkt on-telnet)))))] 
+               (handle-telnet client pkt
+                              telnet-opts on-telnet)))))] 
     (reset! client (make-client wrapped))
     (swap! (:connected @svr) conj client)
     (with-binds
@@ -83,11 +92,10 @@
         (with-binds
           (on-disconnect client))))
     ;; request terminal type
-    ;; TODO we could be more generic about this
-    ;; (include a set of things we'll ":do" in
-    ;; the server opts)
-    (telnet! client {:telnet :do
-                     :opt :term-type})))
+    ;; FIXME we should allow specifying more than :do
+    (doseq [opt accepted-opts]
+      (telnet! client {:telnet :do
+                       :opt opt}))))
 
 ;;
 ;; Server control
@@ -124,6 +132,15 @@
   callbacks and options. This is a macro
   so that you can supply function references
   and still easily update them via repl.
+  Options:
+  :port Port on which to start the server
+  :telnet-opts A set of handled telnet op codes. 
+               will automatically specify 'WILL'
+               for these opts. May be keywords
+               specified in rainboots.proto, or
+               the raw int value. By default, we
+               will handle :term-type and fill out
+               a set in :term-types of the client map
   Callbacks:
   :on-auth (fn [cli line]) Called on each
            raw line of input from the client
@@ -134,11 +151,13 @@
   :on-cmd (fn [cli cmd]) Called on each command
           input from an auth'd client."
   [& {:keys [port 
+             telnet-opts
              on-auth on-cmd 
              on-404
              on-connect on-disconnect
              on-telnet] 
       :or {port default-port
+           telnet-opts default-telnet-opts
            on-404 `(fn [cli# & etc#]
                      (send! cli# "Huh?"))
            on-disconnect `(constantly nil)
@@ -151,6 +170,7 @@
                  `(partial default-on-cmd ~on-404))]
     `(#'-start-server
        :port ~port
+       :telnet-opts ~telnet-opts
        :on-auth (wrap-fn ~on-auth)
        :on-connect (wrap-fn ~on-connect)
        :on-cmd (wrap-fn ~on-cmd)
@@ -230,7 +250,8 @@
                     "with tn-iac constant")))
       ;; it's a map; the protocol will handle it
       (map? telnet)
-      (s/put! s telnet))))
+      (s/put! s telnet))
+    (s/put! s "\r")))
 
 (defn push-cmds!
   "Push a new cmdset to the top of the user's
