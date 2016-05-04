@@ -156,12 +156,12 @@
                :opt "hi"}))))
     (is (= [tn-iac tn-sb 
             tn-op-ttype 
-            1
+            tn-send
             tn-iac tn-se]
            (unsign
              (encode-packet
               {:telnet tn-op-ttype
-               :opt [1]}))))))
+               :opt [:send]}))))))
 
 ;;
 ;; Full protocol tests
@@ -196,5 +196,5 @@
       (is (= {:telnet :nop} (take!))))
     (with-stream
       (put! tn-iac tn-will tn-op-echo)
-      (is (= {:telnet :will :opt tn-op-echo} 
+      (is (= {:telnet :will :opt :echo} 
              (take!))))))

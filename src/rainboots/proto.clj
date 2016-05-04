@@ -27,6 +27,8 @@
 (def tn-do 253)
 (def tn-dont 254)
 
+(def tn-send 1)
+
 ;; option codes for will/wont/etc
 (def tn-op-echo 1)
 (def tn-op-ttype 24) ; terminal type
@@ -44,12 +46,14 @@
    tn-do :do
    tn-dont :dont
    ;
+   tn-op-echo :echo
    tn-op-ttype :term-type
    })
 
 (def tn-keys
-  (zipmap (vals tn-codes)
-          (keys tn-codes)))
+  (assoc (zipmap (vals tn-codes)
+                 (keys tn-codes))
+         :send tn-send))
 
 (defn unsigned-get
   [^ByteBuffer buffer idx]
@@ -200,9 +204,11 @@
 (defn- ->bytes
   [& items]
   (->> items
-       (map #(if (string? %)
-               (seq (.getBytes %))
-               %))
+       (map #(cond
+               (string? %) (seq (.getBytes %))
+               (keyword? %) (get tn-keys %)
+               (vector? %) (seq (apply ->bytes %))
+               :else %))
        flatten
        byte-array))
 

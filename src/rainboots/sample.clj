@@ -38,7 +38,7 @@
             :opt :term-type} pkt)
     (println "! Will term type! Requesting...")
     (send! cli {:telnet :term-type
-                :opt [1]})))
+                :opt [:send]})))
 
 ;;
 ;; Sample command set
