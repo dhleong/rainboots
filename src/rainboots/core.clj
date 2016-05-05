@@ -4,7 +4,8 @@
   (:require [aleph.tcp :as tcp]
             [manifold.stream :as s]
             [rainboots
-             [color :refer [determine-colors process-colors]]
+             [color :refer [determine-colors process-colors
+                            strip-colors]]
              [command :refer [default-on-cmd]]
              [proto :refer [tn-iac wrap-stream]]
              [util :refer [log wrap-fn]]]))
@@ -208,7 +209,9 @@
       (when p
         (condp #(%1 %2) p
           vector? (apply send! cli p)
-          string? (s/put! s (process-colors p))
+          string? (s/put! s (if (:colors @cli)
+                              (process-colors p)
+                              (strip-colors p)))
           map? (s/put! s p)
           fn? (send! cli (p cli)))))
     (s/put! s "\r\n")))

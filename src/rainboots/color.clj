@@ -85,7 +85,7 @@
     (when-not (and colors
                    (or has-256? ansi?))
       ;; TODO if we support 256, indicate availability
-      (swap! cli update :colors (constantly :ansi)))))
+      (swap! cli assoc :colors :ansi))))
 
 (defn process-colors
   "Given a string, replace color sequences

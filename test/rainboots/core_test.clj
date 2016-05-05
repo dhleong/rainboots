@@ -3,6 +3,7 @@
             [manifold.stream :as s]
             [rainboots
              [core :refer :all]
+             [color :refer [ansi-esc]]
              [proto :refer :all]]))
 
 (deftest cmds-stack-test
@@ -63,10 +64,12 @@
       (send! cli (constantly ["Reynolds"]))
       (is (= (take!) "Reynolds"))))
   (testing "Process colors (ansi enabled)"
-    ;; TODO we should handle "ansi supported"
-    ;;  vs "not supported" in rainboots.
-    )
+    (with-cli
+      (swap! cli assoc :colors :ansi)
+      (send! cli "{YReynolds")
+      (is (= (take!) (str ansi-esc "1;33mReynolds")))))
   (testing "Process colors (ansi disabled)"
-    ;; TODO we should handle "ansi supported"
-    ;;  vs "not supported" in rainboots.
-    ))
+    ;; IE: strip out the color sequence
+    (with-cli
+      (send! cli "{YReynolds")
+      (is (= (take!) "Reynolds")))))
