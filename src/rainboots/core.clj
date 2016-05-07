@@ -94,7 +94,7 @@
           (on-disconnect client))))
     ;; request terminal type
     ;; FIXME we should allow specifying more than :do
-    (doseq [opt accepted-opts]
+    (doseq [opt telnet-opts]
       (telnet! client {:telnet :do
                        :opt opt}))))
 
