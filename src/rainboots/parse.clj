@@ -24,29 +24,45 @@
   (let [registered @*arg-types*]
     (loop [to-parse arg-types
            result []
-           input (.trim raw-args)]
-      (if (empty? to-parse)
-        result ; done
+           input (when raw-args
+                   (.trim raw-args))]
+      (cond
+        ;; done
+        (empty? to-parse) result
+        ;; no input? there are still more args, so... fail
+        (nil? input) nil
+        ;; otherwise...
+        :else
         (let [argtype (first to-parse)
               handler (or (get registered argtype)
                           (get registered nil))
-              [v else] (handler cli input)]
-          (recur
-            (next to-parse)
-            (conj result v)
-            else))))))
+              handled (handler cli input)
+              [v else] (or handled
+                           [nil nil])]
+          (when v
+            (recur
+              (next to-parse)
+              (conj result v)
+              else)))))))
 
 (defn apply-cmd
   "Execute the provided cmd-fn, parsing its
   arguments as appropriate with any annotated
   argtypes. See (defargtype)"
   [cmd-fn cli raw-args]
-  (let [arg-lists (:arg-lists (meta cmd-fn))
-        arg-types (:arg-types (meta cmd-fn))]
-    (if (empty? arg-types)
+  (let [arg-lists (:arg-lists (meta cmd-fn))]
+    (if (and (= 1 (count arg-lists))
+             (empty? (first arg-lists)))
       ;; easy case
       (cmd-fn cli)
-      (let [args (expand-args cli raw-args arg-types)]
+      ;; okay, try to expand all arg lists...
+      (when-let [args
+                 (->> arg-lists
+                      (map
+                        (partial expand-args cli raw-args))
+                      (filter some?)
+                      (sort-by count)
+                      last)] ;; ... take the longest match
         (apply cmd-fn cli args)))))
 
 (defn extract-command 

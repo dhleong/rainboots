@@ -51,10 +51,11 @@
       (defargtype :item
         "An item usage"
         [cli input]
-        [(str "ITEM:" 
-              (first 
-                (clojure.string/split input #" +")))
-         nil]) ;; lazy
+        (let [[v remaining] (default-argtype-handler
+                              :cli
+                              input)]
+          [(str "ITEM:" v)
+           remaining])) ;; lazy
       (is (fn? (:item @*arg-types*))))
     (testing "Use (single arity)"
       (let [result (atom nil)]
@@ -64,17 +65,22 @@
         (exec-command :404 :cli "argtype foo")
         (is (= "ITEM:foo" @result))))
     ;
-    (testing "Use (2-arity arity)"
+    (testing "Use (3-arity arity)"
       (let [result (atom nil)]
         (defcmd arity2-argtype-test-cmd
+          ([cli ^:item item1 ^:item item2]
+           (reset! result [item1 item2]))
           ([cli ^:item item]
            (reset! result item))
           ([cli]
-           (reset! result nil)))
+           (reset! result "nothing!")))
+        ;; 3-arity version...
+        (exec-command :404 :cli "arity first second")
+        (is (= ["ITEM:first" "ITEM:second"] @result))
+        ;; 2-arity version...
         (exec-command :404 :cli "arity foo")
         (is (= "ITEM:foo" @result))
-        ;; TODO test:
-        ;; (exec-command :404 :cli "arity")
-        ;; (is (= nil @result))
-        ))))
+        ;; 1-arity version
+        (exec-command :404 :cli "arity")
+        (is (= "nothing!" @result))))))
 
