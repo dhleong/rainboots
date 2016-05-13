@@ -41,7 +41,8 @@
   arguments as appropriate with any annotated
   argtypes. See (defargtype)"
   [cmd-fn cli raw-args]
-  (let [arg-types (:arg-types (meta cmd-fn))]
+  (let [arg-lists (:arg-lists (meta cmd-fn))
+        arg-types (:arg-types (meta cmd-fn))]
     (if (empty? arg-types)
       ;; easy case
       (cmd-fn cli)

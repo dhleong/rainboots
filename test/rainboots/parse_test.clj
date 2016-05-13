@@ -56,13 +56,25 @@
                 (clojure.string/split input #" +")))
          nil]) ;; lazy
       (is (fn? (:item @*arg-types*))))
-    (testing "Use"
+    (testing "Use (single arity)"
       (let [result (atom nil)]
         (defcmd argtype-test-cmd
           [cli ^:item item]
           (reset! result item))
         (exec-command :404 :cli "argtype foo")
-        (is (= "ITEM:foo" @result))))))
-
-;; TODO multi-arity
+        (is (= "ITEM:foo" @result))))
+    ;
+    (testing "Use (2-arity arity)"
+      (let [result (atom nil)]
+        (defcmd arity2-argtype-test-cmd
+          ([cli ^:item item]
+           (reset! result item))
+          ([cli]
+           (reset! result nil)))
+        (exec-command :404 :cli "arity foo")
+        (is (= "ITEM:foo" @result))
+        ;; TODO test:
+        ;; (exec-command :404 :cli "arity")
+        ;; (is (= nil @result))
+        ))))
 
