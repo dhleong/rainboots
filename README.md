@@ -153,6 +153,19 @@ example, imagine this command:
 ```
 
 A user-input line "put gun holster" will be automatically destructured for you.
+
+Commands don't always follow a single format, however, so `defcmd` supports
+multi-arity out of the box:
+
+```clojure
+(defcmd look
+  "Look around you, or at something"
+  ([cli]
+   (send! cli "You're on a run-down old ship (But don't call it that!)"))
+  ([cli thing]
+   (send! cli thing " isn't very interesting to look at")))
+```
+
 To make this really convenient, however, you'll want to make some argument types.
 
 #### Argument Types
