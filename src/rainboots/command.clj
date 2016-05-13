@@ -22,9 +22,15 @@
   function, given its var"
   [fun]
   (let [m (meta fun)
-        args (first (:arglists m))]
+        arglists (:arglists m)
+        args (first arglists)]
     {:name (-> m :name str)
      :doc (-> m :doc)
+     :arg-lists (->> arglists
+                     (map 
+                       #(->> %
+                             (drop 1)
+                             (map (comp first keys meta)))))
      :arg-types (map 
                   (comp first keys meta) 
                   (drop 1 args))}))
@@ -57,9 +63,11 @@
 (defmacro defcmd
   "Declare a command that can be invoked
   from the default on-cmd handler. The
-  syntax is similar to (defn). The cmd-name
-  may be annotated with ^:no-abbrv if the
-  command may only be executed by inputting
+  syntax is similar to (defn), including support
+  for multi-arity. Note, however, that same-arity
+  with different argtypes is NOT supported.
+  The cmd-name may be annotated with ^:no-abbrv 
+  if the command may only be executed by inputting
   the full name; otherwise, abbreviations
   will be generated starting from the first
   letter, then the first two letters, and so on."
@@ -68,12 +76,9 @@
         doc (if has-doc?
               (first decl)
               "")
-        argv (if has-doc?
-               (second decl)
-               (first decl))
         body (if has-doc?
-               (drop 2 decl)
-               (rest decl))
+               (next decl)
+               decl)
         no-abbrv? (:no-abbrv (meta cmd-name))
         fn-name (str cmd-name) ;; let's just use it directly
         fn-var (symbol fn-name)
@@ -83,7 +88,6 @@
                       (build-up invoke))]
     `(let [defd-fn# (defn ~fn-var
                       ~doc
-                      ~argv
                       ~@body)
            ~'wrapped (with-meta 
                        (wrap-fn ~fn-var)

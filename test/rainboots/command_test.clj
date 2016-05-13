@@ -21,15 +21,27 @@
         (is (= "foo" @returned))))))
 
 (deftest cmd-meta-test
-  (defn cmd-meta-test-cmd-fn
-    "Test function"
-    [cli ^:item item ^:eq equip text]
-    nil)
-  (let [m (cmd-meta (var cmd-meta-test-cmd-fn))
-        args (:arg-types m)]
-    (is (= "cmd-meta-test-cmd-fn" (:name m)))
-    (is (= "Test function" (:doc m)))
-    (is (= :item (first args)))
-    (is (= :eq (second args)))
-    (is (= nil (last args)))))
+  (testing "Single arity"
+    (defn cmd-meta-test-cmd-fn
+      "Test function"
+      [cli ^:item item ^:eq equip text]
+      nil)
+    (let [m (cmd-meta (var cmd-meta-test-cmd-fn))
+          args (:arg-types m)]
+      (is (= "cmd-meta-test-cmd-fn" (:name m)))
+      (is (= "Test function" (:doc m)))
+      (is (= :item (first args)))
+      (is (= :eq (second args)))
+      (is (= nil (last args)))))
+  (testing "Multi-arity"
+    (defn cmd-meta-test-2arity
+      "2Arity Test"
+      ([cli ^:item item]
+       nil)
+      ([cli]
+       nil))
+    (let [m (cmd-meta (var cmd-meta-test-2arity))
+          lists (:arg-lists m)]
+      (is (= [:item] (first lists)))
+      (is (= [] (second lists))))))
 

@@ -64,4 +64,5 @@
         (exec-command :404 :cli "argtype foo")
         (is (= "ITEM:foo" @result))))))
 
+;; TODO multi-arity
 
