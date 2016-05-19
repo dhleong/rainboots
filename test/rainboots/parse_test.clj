@@ -1,7 +1,9 @@
 (ns rainboots.parse-test
   (:require [clojure.test :refer :all]
+            [manifold.stream :as s]
             [rainboots
              [command :refer [*commands* defcmdset defcmd exec-command]]
+             [core :refer [send!]]
              [parse :refer :all]]))
 
 (deftest extract-command-test
@@ -88,3 +90,23 @@
         (exec-command :404 :cli "arity")
         (is (= "nothing!" @result))))))
 
+(deftest arg-exception-test
+  (binding [*arg-types* (atom {})
+            *commands* (atom {})] 
+    (defargtype :error
+      "Test error results"
+      [cli input]
+      (let [[v remaining] (default-argtype-handler
+                            :cli
+                            input)]
+        [(Exception. (str "No such " v))
+         remaining]))
+    (testing "Send exception message"
+      (defcmd except-test-cmd
+        [cli ^:error error]
+        (send! cli "Success!?"))
+      (let [stream (s/stream)
+            cli (atom {:stream stream})]
+        (exec-command :404 cli "except luck")
+        (is (= "No such luck"
+               @(s/try-take! stream 10)))))))

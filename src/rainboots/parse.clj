@@ -1,7 +1,8 @@
 (ns ^{:author "Daniel Leong"
       :doc "Command parsing"}
   rainboots.parse
-  (:require [clojure.string :refer [split]]))
+  (:require [clojure.string :refer [split]]
+            [rainboots.core :refer [send!]]))
 
 (defn- strim
   "'Safe' trim; if input is nil, returns nil.
@@ -45,10 +46,9 @@
         (let [argtype (first to-parse)
               handler (or (get registered argtype)
                           (get registered nil))
-              handled (handler cli input)
-              [v else] (or handled
-                           [nil nil])]
-          (when v
+              [v else error?] (handler cli input)]
+          (cond
+            v
             (recur
               (next to-parse)
               (conj result v)
@@ -72,7 +72,14 @@
                       (filter some?)
                       (sort-by count)
                       last)] ;; ... take the longest match
-        (apply cmd-fn cli args)))))
+        (if-let [err (some
+                       #(when (instance? Exception %) %)
+                       args)]
+          ;; error handling a successfully parsed arg;
+          ;;  tell the client about it
+          (send! cli (.getMessage err))
+          ;; everything looks good! make it happen
+          (apply cmd-fn cli args))))))
 
 (defn extract-command 
   "Splits input into [cmd, REST], where `cmd` is
@@ -99,11 +106,16 @@
   input string (or nil if there's nothing else).
   If the provided input cannot be successfully
   parsed, you may return nil to indicate that
-  the `doc` text should be shown.
+  the `doc` text should be shown. If it was successfully
+  parsed but the input was invalid, a Throwable
+  should be returned as the first item in the tuple;
+  the message will be sent to the client.
   This can be used for implementing common
   functionality; eg: ^:item could locate an item 
   object at the right place and pass that as 
-  the arg (instead of just a string). 
+  the arg (instead of just a string). If the item couldn't
+  be located (or didn't exist), that's when a Throwable
+  should be returned.
   Such functionality will probably be left to client 
   code (or plugin libraries), but there's lots of 
   potential here.
