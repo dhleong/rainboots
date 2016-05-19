@@ -3,9 +3,17 @@
   rainboots.parse
   (:require [clojure.string :refer [split]]))
 
+(defn- strim
+  "'Safe' trim; if input is nil, returns nil.
+  Otherwise, performs (.trim) on it."
+  [^CharSequence string]
+  (when string
+    (.trim string)))
+
 (defn default-argtype-handler
   [cli input]
-  (let [[full value] 
+  (let [input (.trim input)
+        [full value] 
         (first
           (re-seq #"(\S+)(\s+|$)" input))
         full-len (count full)
@@ -24,11 +32,12 @@
   (let [registered @*arg-types*]
     (loop [to-parse arg-types
            result []
-           input (when raw-args
-                   (.trim raw-args))]
+           input (strim raw-args)]
       (cond
-        ;; done
-        (empty? to-parse) result
+        ;; done, but if there's still more input then 
+        ;;  this was for a different arity
+        (empty? to-parse) (when (empty? input)
+                            result)
         ;; no input? there are still more args, so... fail
         (nil? input) nil
         ;; otherwise...
@@ -43,7 +52,7 @@
             (recur
               (next to-parse)
               (conj result v)
-              else)))))))
+              (strim else))))))))
 
 (defn apply-cmd
   "Execute the provided cmd-fn, parsing its

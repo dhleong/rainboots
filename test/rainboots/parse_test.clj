@@ -29,7 +29,11 @@
       (is (= ["one  two" "three"] 
              (expand-args :cli "one  two three" [:read2 nil])))
       (is (= ["one" "two three"] 
-             (expand-args :cli "one  two three" [nil :read2]))))))
+             (expand-args :cli "one  two three" [nil :read2])))))
+  (testing "Not enough args is nil"
+    (is (nil? (expand-args :cli "one" [nil nil]))))
+  (testing "Too many args is nil"
+    (is (nil? (expand-args :cli "one two" [nil])))))
 
 (deftest argtype-test
   (testing "Default handler"
