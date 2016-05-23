@@ -14,6 +14,7 @@
       (println "! Auth:" u)
       (swap! cli assoc :ch {:name "Joe"
                             :user u})
+      (send-all! (-> @cli :ch :name) " has entered the world")
       (send! cli 
              "Logged in as {W" 
              (-> @cli :ch :name)

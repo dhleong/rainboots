@@ -2,7 +2,7 @@
       :doc "Command parsing"}
   rainboots.parse
   (:require [clojure.string :refer [split]]
-            [rainboots.core :refer [send!]]))
+            [rainboots.comms :refer [send!]]))
 
 (defn- strim
   "'Safe' trim; if input is nil, returns nil.

@@ -3,16 +3,24 @@
   rainboots.core
   (:require [aleph.tcp :as tcp]
             [manifold.stream :as s]
+            [potemkin :refer [import-vars]]
             [rainboots
              [color :refer [determine-colors process-colors
                             strip-colors]]
+             [comms :as comms]
              [command :refer [default-on-cmd]]
              [proto :refer [tn-iac wrap-stream]]
              [util :refer [log wrap-fn]]]))
 
 (def default-port 4321)
 
-(def ^:dynamic *svr*)
+;; copy from comms for convenience
+(import-vars
+  [rainboots.comms
+   *svr*
+   send!
+   send-if!
+   send-all!])
 
 (declare telnet!)
 
@@ -72,16 +80,16 @@
           s 
           (fn [s pkt]
             (with-binds
-             (if (string? pkt)
-               ;; string pkt...
-               (if (:ch @client)
-                 ;; logged in; use cmd handler
-                 (on-cmd client pkt)
-                 ;; need auth still
-                 (on-auth client pkt))
-               ;; simple; telnet pkt
-               (handle-telnet client pkt
-                              telnet-opts on-telnet)))))] 
+              (if (string? pkt)
+                ;; string pkt...
+                (if (:ch @client)
+                  ;; logged in; use cmd handler
+                  (on-cmd client pkt)
+                  ;; need auth still
+                  (on-auth client pkt))
+                ;; simple; telnet pkt
+                (handle-telnet client pkt
+                               telnet-opts on-telnet)))))] 
     (reset! client (make-client wrapped))
     (swap! (:connected @svr) conj client)
     (with-binds
@@ -125,7 +133,9 @@
     ;;  thanks to use of (binding) above (although
     ;;  I'm not sure why you'd start more than one
     ;;  server in the same JVM, anyway....)
-    (def ^:dynamic *svr* obj)
+    (comms/redef-svr! obj)
+    ;; re-import
+    (import-vars [rainboots.comms *svr*])
     obj))
 
 (defmacro start-server
@@ -191,46 +201,6 @@
   "Disconnect the client"
   [cli]
   (s/close! (:stream @cli)))
-
-(defn send!
-  "Send text to the client. You can pass in a variable
-  number of args, which may in turn be strings, vectors,
-  or functions. Vectors will be treated as additional
-  varargs (IE: (apply)'d to this function).  Functions
-  will be called with the client as a single argument,
-  and the result sent as if it were passed directly.
-  Strings, and any string returned by a function argument
-  or in a vector, will be processed for color sequences
-  (see the colors module).
-  Maps will be treated as telnet sequences (see telnet!)"
-  [cli & body]
-  (when-let [s (:stream @cli)]
-    (doseq [p body]
-      (when p
-        (condp #(%1 %2) p
-          vector? (apply send! cli p)
-          string? (s/put! s (if (:colors @cli)
-                              (process-colors p)
-                              (strip-colors p)))
-          map? (s/put! s p)
-          fn? (send! cli (p cli)))))
-    (s/put! s "\r\n")))
-
-(defn send-if!
-  "Send text to every connected client for which 
-  (pred cli) returns true. The arguments will be
-  handled in the same way (send!) handles them."
-  [pred & body]
-  (when-let [clients (seq @(:connected @*svr*))]
-    (doseq [cli clients]
-      (when (pred cli)
-        (apply send! cli body)))))
-
-(defn send-all!
-  "Send text to every connected client. This is
-  a convenience function."
-  [& body]
-  (apply send-if! (constantly true) body))
 
 (defn telnet!
   "Send a telnet map (like thsoe received in :on-telnet)
