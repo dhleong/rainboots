@@ -27,7 +27,7 @@
       [cli ^:item item ^:eq equip text]
       nil)
     (let [m (cmd-meta (var cmd-meta-test-cmd-fn))
-          args (:arg-types m)]
+          args (first (:arg-lists m))]
       (is (= "cmd-meta-test-cmd-fn" (:name m)))
       (is (= "Test function" (:doc m)))
       (is (= :item (first args)))
@@ -45,3 +45,16 @@
       (is (= [:item] (first lists)))
       (is (= [] (second lists))))))
 
+(deftest parameterized-argtype-test
+  (testing "Parameterized argtype"
+    (defn cmd-meta-test-cmd-fn
+      "Test function"
+      [cli ^{:item :in-storage} item ^{:eq :held} equip any]
+      nil)
+    (let [m (cmd-meta (var cmd-meta-test-cmd-fn))
+          args (first (:arg-lists m))]
+      (is (= "cmd-meta-test-cmd-fn" (:name m)))
+      (is (= "Test function" (:doc m)))
+      (is (= [:item :in-storage] (first args)))
+      (is (= [:eq :held] (second args)))
+      (is (= nil (last args))))))

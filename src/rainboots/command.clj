@@ -11,6 +11,15 @@
 ;; Util methods
 ;;
 
+(defn- drop-obvious
+  "If the argtype param is just `true`,
+  drop it. Otherwise, return unaltered"
+  [item]
+  (if (and (= 2 (count item))
+           (= true (second item)))
+    (first item)
+    item))
+
 (defn build-up
   [string]
   (map
@@ -26,14 +35,12 @@
         args (first arglists)]
     {:name (-> m :name str)
      :doc (-> m :doc)
-     :arg-lists (->> arglists
-                     (map 
-                       #(->> %
-                             (drop 1)
-                             (map (comp first keys meta)))))
-     :arg-types (map 
-                  (comp first keys meta) 
-                  (drop 1 args))}))
+     :arg-lists 
+     (->> arglists
+          (map 
+            #(->> %
+                  (drop 1)
+                  (map (comp drop-obvious first meta)))))}))
 
 ;;
 ;; Public interface

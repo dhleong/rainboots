@@ -35,7 +35,20 @@
   (testing "Not enough args is nil"
     (is (nil? (expand-args :cli "one" [nil nil]))))
   (testing "Too many args is nil"
-    (is (nil? (expand-args :cli "one two" [nil])))))
+    (is (nil? (expand-args :cli "one two" [nil]))))
+  (testing "Parameterized types"
+    (binding [*arg-types* (atom {nil default-argtype-handler})]
+      (defargtype :read2
+        "Reads two words as one arg"
+        [cli input & [param]]
+        (let [m (re-seq #"(\S+\s+\S+)(\S*.*)$" input)]
+          (let [[v r] (-> m first rest)]
+            [(str param v) r])))
+      (is (= ["one  two"] 
+             (expand-args :cli "one  two " [:read2])))
+      (is (= ["foo:one  two" "three"] 
+             (expand-args :cli "one  two three" 
+                          [[:read2 "foo:"] nil]))))))
 
 (deftest argtype-test
   (testing "Default handler"
@@ -110,3 +123,22 @@
         (exec-command :404 cli "except luck")
         (is (= "No such luck"
                @(s/try-take! stream 10)))))))
+
+(deftest parameterized-argtype-test
+  (binding [*arg-types* (atom {})
+            *commands* (atom {})] 
+    (defargtype :item
+      "An item usage"
+      [cli input param]
+      (let [[v remaining] (default-argtype-handler
+                            :cli
+                            input)]
+        [(str "ITEM:" v ":" (name param))
+         remaining]))
+    (testing "Use (single arity)"
+      (let [result (atom nil)]
+        (defcmd param-argtype-test-cmd
+          [cli ^{:item :in-storage} item]
+          (reset! result item))
+        (exec-command :404 :cli "param foo")
+        (is (= "ITEM:foo:in-storage" @result))))))

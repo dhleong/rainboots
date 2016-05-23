@@ -44,9 +44,16 @@
         ;; otherwise...
         :else
         (let [argtype (first to-parse)
+              param (when (vector? argtype)
+                      (second argtype))
+              argtype (if (vector? argtype)
+                        (first argtype)
+                        argtype)
               handler (or (get registered argtype)
                           (get registered nil))
-              [v else error?] (handler cli input)]
+              [v else error?] (if param
+                                (handler cli input param)
+                                (handler cli input))]
           (cond
             v
             (recur
@@ -125,11 +132,18 @@
   to support \"sword from/in chest\" or \"shoe on 
   ground\"-type phrases. We might also want something 
   like :^rest to keep all the \"rest\" of the input as
-  a string in a single argument."
+  a string in a single argument.
+  You may also accept a parameter to the argtype, for
+  further specification per-cmd. For example, if you want
+  an item but only if it's on the ground you might annotate
+  the cmd arg with ^{:item :on-ground}. The 'value' of the
+  argtype annotation will be passed to your argtype as the
+  third parameter (since it is less common, and you may
+  wish to make it optional)."
   [arg-type doc argv & fn-body]
   {:pre [(keyword? arg-type)
          (vector? argv)
-         (= 2 (count argv))]}
+         (>= (count argv) 2)]}
   `(swap! *arg-types* 
           assoc
           ~arg-type
