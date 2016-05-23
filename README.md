@@ -192,6 +192,21 @@ and whose second item is the remaining part of the input to parse. Handlers are 
 a client object and the remaining input line at that point. This lets you do fancy things
 like supporting "sword in stone" as a single `^:item` argument.
 
+For more specificity per-command, you may use the map annotation style to provide a parameter
+to your argtype. For example, you could annotate a param as `^{:item :on-ground}` if you only
+want the item if it is on the ground. The argtype def should then look something like:
+
+```clojure
+(defargtype :item
+  "An item somewhere"
+  [cli input & [param]]
+  (cond 
+    (= :on-ground param)
+    ;; .. etc
+    :else ;; ...
+    ))
+```
+
 ### Command sets
 
 TODO (or, put it in the wiki)
