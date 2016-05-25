@@ -257,7 +257,46 @@ don't wish to use `defcmd` or `defcmdset`, you can just `(push-cmds!)` your own 
 
 ### Hooks
 
-TODO
+Hooks allow you to provide information throughout the system without having
+any direct dependencies. For example, you might have a hook for "wearing" an
+item. There might be different types of effects associated with an item, such
+as armor points, or magical properties. You could store these properties as
+keywords on the item, and apply them by *hooking into* the "wear" event.
+
+For example:
+
+```clojure
+;;
+;; Register hooks
+;;
+
+; magic-items.clj:
+(hook! :wear-item
+  (fn [& {:keys [cli item] :as arg}]
+    (when-let [magic (:magic item)]
+      (apply-magic! cli magic))
+    arg))
+
+; armor.clj:
+(hook! :wear-item
+  (fn [& {:keys [cli item] :as arg}]
+    (when-let [armor (:armor item)]
+      (apply-armor! cli armor))
+    arg))
+
+;;
+;; Execute hooks
+;;
+
+(defcmd wear
+  "Wear an item"
+  [cli ^:item item]
+  (when (trigger! :wear-item {:cli cli :item item})
+    ;; You could potentially support returning nil
+    ;;  to indicate that the item couldn't be worn;
+    ;;  the semantics of each hook is up to you!
+    (add-equip! cli item))
+```
 
 ### Colors
 
