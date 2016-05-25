@@ -255,13 +255,28 @@ In fact, a cmdset is just a function, which looks like `(fn [on-404 cli input])`
 and the rest is as you expect. So, if you want full control over the input and
 don't wish to use `defcmd` or `defcmdset`, you can just `(push-cmds!)` your own function!
 
+### Hooks
+
+TODO
+
 ### Colors
 
 When using the built-in `(send!)` method, strings will automatically be colorized
-with ansi using some built-in escape sequences.
+with ansi using some built-in escape sequences. The foreground color can be
+changed using the `{` character, followed by a color. Here's a table:
 
-TODO document color sequences (or, put this in the wiki)
-
+Symbol | Color   | | Symbol | Color
+-------|---------|-|--------|------
+`{d`   | Dark    | | `{D`   | Less-dark
+`{r`   | Red     | | `{R`   | Bright-red
+`{g`   | Green   | | `{G`   | Bright-green
+`{y`   | Yellow  | | `{Y`   | Bright-yellow
+`{b`   | Blue    | | `{B`   | Bright-blue
+`{p`   | Magenta | | `{P`   | Bright-Magenta
+`{c`   | Cyan    | | `{C`   | Bright-cyan
+`{w`   | Gray    | | `{W`   | White
+`{n`   | (Reset)
+  
 ## License
 
 Copyright © 2016 Daniel Leong
