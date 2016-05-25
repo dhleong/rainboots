@@ -267,14 +267,14 @@ changed using the `{` character, followed by a color. Here's a table:
 
 Symbol | Color   | | Symbol | Color
 -------|---------|-|--------|------
-`{d`   | Dark    | | `{D`   | Less-dark
-`{r`   | Red     | | `{R`   | Bright-red
-`{g`   | Green   | | `{G`   | Bright-green
-`{y`   | Yellow  | | `{Y`   | Bright-yellow
-`{b`   | Blue    | | `{B`   | Bright-blue
-`{p`   | Magenta | | `{P`   | Bright-Magenta
-`{c`   | Cyan    | | `{C`   | Bright-cyan
-`{w`   | Gray    | | `{W`   | White
+`{d`   | ![Dark](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/43c72287b5a987b545b2a81480767527b4d8dab1/ansi-d-dark.svg)    | | `{D`   | ![Less-Dark](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/82dad12dbfe04766120883be5d74dd2f87df57fd/ansi-b-dark.svg)
+`{r`   | ![Red](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/43c72287b5a987b545b2a81480767527b4d8dab1/ansi-d-red.svg)     | | `{R`   | ![Bright Red](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/2e3d51c6bb96b9f20ead14161edba4c66be57818/ansi-b-red.svg)
+`{g`   | ![Green](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/43c72287b5a987b545b2a81480767527b4d8dab1/ansi-d-green.svg)   | | `{G`   | ![Bright-green](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/1ce48bb5af4ba4207ef7469e99a4ef9e3882a677/ansi-b-green.svg)
+`{y`   | ![Yellow](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/43c72287b5a987b545b2a81480767527b4d8dab1/ansi-d-yellow.svg)  | | `{Y`   | ![Bright-yellow](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/1ce48bb5af4ba4207ef7469e99a4ef9e3882a677/ansi-b-yellow.svg)
+`{b`   | ![Blue](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/43c72287b5a987b545b2a81480767527b4d8dab1/ansi-d-blue.svg)    | | `{B`   | ![Bright-blue](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/2a2b5b6583abe9e60e1eaed141fc585d4db74095/ansi-b-blue.svg)
+`{p`   | ![Magenta](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/43c72287b5a987b545b2a81480767527b4d8dab1/ansi-d-magenta.svg) | | `{P`   | ![Bright-Magenta](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/2a2b5b6583abe9e60e1eaed141fc585d4db74095/ansi-b-magenta.svg)
+`{c`   | ![Cyan](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/43c72287b5a987b545b2a81480767527b4d8dab1/ansi-d-cyan.svg)    | | `{C`   | ![Bright-cyan](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/2a2b5b6583abe9e60e1eaed141fc585d4db74095/ansi-b-cyan.svg)
+`{w`   | ![Gray](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/43c72287b5a987b545b2a81480767527b4d8dab1/ansi-d-white.svg)    | | `{W`   | ![White](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/2a2b5b6583abe9e60e1eaed141fc585d4db74095/ansi-b-white.svg)
 `{n`   | (Reset)
   
 ## License
