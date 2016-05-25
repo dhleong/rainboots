@@ -1,4 +1,4 @@
-# rainboots
+# rainboots [![Clojars Project](https://img.shields.io/clojars/v/rainboots.svg)](https://clojars.org/rainboots)
 
 *A more elegant way to make [MUD](https://en.wikipedia.org/wiki/MUD)*
 
