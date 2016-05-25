@@ -1,6 +1,6 @@
 # rainboots
 
-Protect yourself from the grossness of writing a MUD server
+*A more elegant way to make [MUD](https://en.wikipedia.org/wiki/MUD)*
 
 ## What
 
@@ -8,7 +8,7 @@ Rainboots is super barebones, providing some important core functionality
 without getting in the way of making any sort of MUD experience you can
 imagine. It aims to be flexible and extensible, so that any number of
 features can be plugged in and shared, but is unopinionated about the
-ultimate experience. Almost every aspect---from low-level input routing
+ultimate experience. Almost every aspect---from low-level input handling
 to user authentication---can be replaced and redesigned. 
 
 Rainboots doesn't even initially provide a room or navigation system, 
@@ -19,10 +19,17 @@ Rainboots is implemented in Clojure for flexibility and rapid development.
 New commands (or updated versions of existing commands!) can easily be 
 swapped in with a REPL on the fly, without needing to restart the server.
 
+At its core, Rainboots is a fancy telnet server, capable of sending and
+receiving raw telnet signals, so if you want to make a telnet server for
+whatever reason, Rainboots can be used for that, as well. Some (but not all) 
+telnet commands will be parsed into a nice, friendly Keyword, but it will 
+fall back to the integer value for any it doesn't know---feel free to send
+a PR with any missing signals!
+
 ## How
 
 A [sample](src/rainboots/sample.clj) is included with Rainboots that shows
-some basic usage, which we will go into here.
+some basic usage, which we will describe in more detail here:
 
 ### Starting the server
 
@@ -64,13 +71,13 @@ to store any transient data in the client object/atom.
 
 "Reserved" keywords:
 
-- `:stream` holds the connection object
-- `:ch` holds your character data, 
-- `:in` should be used for the current room object, if you're into that
+- `:stream` holds the connection object, used by `(send!)`
+- `:ch` holds your character data, once auth'd
+- `:input-stack` is used by the default command handler for command sets
 
 Character data management and formatting is totally up to you. You may want to put
 another `atom` there for more easy swapping, but rainboots doesn't care. As long as
-there is *some* non-`nil` value stored there, it will assume you are logged in.
+there is *some* non-`nil` value stored in `:ch`, it will assume you are logged in.
 
 ### Basic Auth
 
@@ -85,12 +92,12 @@ let's look at how to implement auth. Here is a minimal example:
 ```
 
 This will be a very simple MUD, with no stats or attributes storable in the user,
-but rainboots doesn't mind. As long as `:ch` is non-`nil`, the user is logged in,
-and the `on-cmd` handler will be called (see below). 
+but rainboots doesn't mind. As stated above, so long as `:ch` is non-`nil`, the user 
+is "logged in," and the `on-cmd` handler will be called (see below) instead of `on-auth`. 
 
 A more interesting `on-auth` will probably want to use the client atom as temporary
-storage for checking auth. Here's a more complete example, where each character has
-their own username and password. Persistence is left to the user.
+storage for checking credentials. Here's a more complete example, where each character 
+has their own username and password. Persistence is left to the user.
 
 ```clojure
 (defn on-auth
@@ -99,7 +106,7 @@ their own username and password. Persistence is left to the user.
     ;; they've already provided a username
     (do
       ;; probably load the character by username from a db or flat file,
-      ;;  then compare the password
+      ;;  then compare the (hashed) password
       (if-let [ch (validate-and-load u line)]
         (do
           (swap! cli assoc :ch ch)
@@ -171,7 +178,7 @@ To make this really convenient, however, you'll want to make some argument types
 #### Argument Types
 
 A powerful feature built into rainboots is the notion of "argument types." These
-are basically keyword annotations for command argument which transform the user's
+are basically keyword annotations for command arguments which transform the user's
 input into the appropriate object, so commands can just declare what they expect,
 and rainboots can handle validating the user's input and providing the objects.
 
@@ -207,9 +214,46 @@ want the item if it is on the ground. The argtype def should then look something
     ))
 ```
 
+Argtypes may not always "work," however. Even if the user provided parse-able input,
+it might be invalid. Having to handle that everywhere you use an argtype is problematic,
+so you may return a `Throwable` instead of a value. If any argument is parsed to a 
+`Throwable`, the message in the first `Throwable` found will be sent to the user, and
+your command handler will not be called. For example:
+
+```clojure
+(defargtype :item
+  "An item somewhere"
+  [cli input]
+  (if-let [[item etc] (find-item cli input)]
+    ;; found it!
+    [item etc]
+    ;; no such item found:
+    [(Exception. (str "I don't see any " input)), etc]))
+```
+
 ### Command sets
 
-TODO (or, put it in the wiki)
+Normally, all commands are added to a default "command set." Sometimes, however,
+you may wish to put the user into a special mode where they have access to only
+specific commands. You can do this via `(push-cmds!)` and `(pop-cmds!)`. 
+
+`(push-cmds!)` takes a client object, and the command set. You can define a command
+set using, you guessed it:
+
+```clojure
+(defcmdset combat-commands
+  (defcmd punch
+    [cli]
+    (send! cli "You swing a punch!")))
+```
+
+Any `defcmd`s inside a `defcmdset` will be bound to that set, and only visible after
+a call to `(push-cmds! cli combat-commands)`. 
+
+In fact, a cmdset is just a function, which looks like `(fn [on-404 cli input])`. 
+`on-404` is the registered "unknown command" function installed on the server,
+and the rest is as you expect. So, if you want full control over the input and
+don't wish to use `defcmd` or `defcmdset`, you can just `(push-cmds!)` your own function!
 
 ### Colors
 

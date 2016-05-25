@@ -51,9 +51,9 @@
                         argtype)
               handler (or (get registered argtype)
                           (get registered nil))
-              [v else error?] (if param
-                                (handler cli input param)
-                                (handler cli input))]
+              [v else] (if param
+                         (handler cli input param)
+                         (handler cli input))]
           (cond
             v
             (recur
@@ -80,7 +80,7 @@
                       (sort-by count)
                       last)] ;; ... take the longest match
         (if-let [err (some
-                       #(when (instance? Exception %) %)
+                       #(when (instance? Throwable %) %)
                        args)]
           ;; error handling a successfully parsed arg;
           ;;  tell the client about it
