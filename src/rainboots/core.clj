@@ -42,7 +42,7 @@
   [cli pkt accepted-opts fallback]
   (cond
     ;; the client can send term type! request it
-    (= {:telnet :will 
+    (= {:telnet :will
         :opt :term-type} pkt)
     (telnet! cli {:telnet :term-type
                   :opt [:send]})
@@ -75,9 +75,9 @@
         on-telnet (:on-telnet opts)
         on-disconnect (:on-disconnect opts)
         client (atom {})
-        wrapped 
+        wrapped
         (wrap-stream
-          s 
+          s
           (fn [s pkt]
             (with-binds
               (if (string? pkt)
@@ -89,7 +89,7 @@
                   (on-auth client pkt))
                 ;; simple; telnet pkt
                 (handle-telnet client pkt
-                               telnet-opts on-telnet)))))] 
+                               telnet-opts on-telnet)))))]
     (reset! client (make-client wrapped))
     (swap! (:connected @svr) conj client)
     (with-binds

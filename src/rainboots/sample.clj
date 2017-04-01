@@ -8,15 +8,15 @@
 
 (defn on-auth
   [cli line]
-  (if-let [u (:user @cli)] 
+  (if-let [u (:user @cli)]
     (do
       ;; NB: check password
       (println "! Auth:" u)
       (swap! cli assoc :ch {:name "Joe"
                             :user u})
       (send-all! (-> @cli :ch :name) " has entered the world")
-      (send! cli 
-             "Logged in as {W" 
+      (send! cli
+             "Logged in as {W"
              (-> @cli :ch :name)
              "{n"))
     (do
@@ -48,8 +48,11 @@
 ;;
 
 (defcmd look
-  [cli & [dir]]
-  (send! cli "You look: " dir))
+  ([cli]
+   (send! cli "You look around."))
+  ([cli dir]
+   (println "Look:" dir)
+   (send! cli "You look: " dir)))
 
 (defcmd buffer
   [cli]
@@ -71,7 +74,7 @@
 
 (defn start-sample
   []
-  (def svr 
+  (def svr
     (start-server
       :port 4321
       :on-auth on-auth

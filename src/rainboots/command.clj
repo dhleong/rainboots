@@ -1,5 +1,5 @@
 (ns ^{:author "Daniel Leong"
-      :doc "Command definitions"} 
+      :doc "Command definitions"}
   rainboots.command
   (:require [rainboots
              [parse :refer [apply-cmd extract-command]]
@@ -27,17 +27,17 @@
     (range 1 (inc (count string)))))
 
 (defn cmd-meta
-  "Extract meta information for a command 
+  "Extract meta information for a command
   function, given its var"
   [fun]
   (let [m (meta fun)
-        arglists (:arglists m)
-        args (first arglists)]
+        arglists (:arglists m)]
     {:name (-> m :name str)
      :doc (-> m :doc)
-     :arg-lists 
+     :arg-lists
+     ;; TODO support the & rest-args deconstruction?
      (->> arglists
-          (map 
+          (map
             #(->> %
                   (drop 1)
                   (map (comp drop-obvious first meta)))))}))
@@ -96,11 +96,11 @@
     `(let [defd-fn# (defn ~fn-var
                       ~doc
                       ~@body)
-           ~'wrapped (with-meta 
+           ~'wrapped (with-meta
                        (wrap-fn ~fn-var)
                        (cmd-meta (var ~fn-var)))]
-       (swap! *commands* 
-              assoc 
+       (swap! *commands*
+              assoc
               ~@(mapcat
                   list
                   invocations

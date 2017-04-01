@@ -14,7 +14,7 @@
 (defn default-argtype-handler
   [cli input]
   (let [input (.trim input)
-        [full value] 
+        [full value]
         (first
           (re-seq #"(\S+)(\s+|$)" input))
         full-len (count full)
@@ -23,7 +23,7 @@
     ; TODO probably, support quoted strings
     [value remaining]))
 
-(defonce ^:dynamic *arg-types* 
+(defonce ^:dynamic *arg-types*
   ;; we include a default arg type
   (atom {nil default-argtype-handler}))
 
@@ -88,13 +88,13 @@
           ;; everything looks good! make it happen
           (apply cmd-fn cli args))))))
 
-(defn extract-command 
+(defn extract-command
   "Splits input into [cmd, REST], where `cmd` is
   the text command input, and REST is the rest of
   the arguments passed, if any"
   [raw-cmd]
   {:pre [(string? raw-cmd)]}
-  (default-argtype-handler 
+  (default-argtype-handler
     nil (.trim raw-cmd)))
 
 ;;
@@ -106,10 +106,10 @@
   to a command is annotated with an arg type,
   the declared argtype handler will be called
   with the client who's calling, and the input
-  string starting from with the argument. 
+  string starting from with the argument.
   The handler MUST return a tuple, where the first
   value is passed to the command as the argument,
-  and the second is the remaining, unparsed 
+  and the second is the remaining, unparsed
   input string (or nil if there's nothing else).
   If the provided input cannot be successfully
   parsed, you may return nil to indicate that
@@ -118,19 +118,19 @@
   should be returned as the first item in the tuple;
   the message will be sent to the client.
   This can be used for implementing common
-  functionality; eg: ^:item could locate an item 
-  object at the right place and pass that as 
+  functionality; eg: ^:item could locate an item
+  object at the right place and pass that as
   the arg (instead of just a string). If the item couldn't
   be located (or didn't exist), that's when a Throwable
   should be returned.
-  Such functionality will probably be left to client 
-  code (or plugin libraries), but there's lots of 
+  Such functionality will probably be left to client
+  code (or plugin libraries), but there's lots of
   potential here.
   Note that we need the full input string, as we can't
   assume a single word will apply to a single arg.
-  To continue with ^:item, for example, we might want 
-  to support \"sword from/in chest\" or \"shoe on 
-  ground\"-type phrases. We might also want something 
+  To continue with ^:item, for example, we might want
+  to support \"sword from/in chest\" or \"shoe on
+  ground\"-type phrases. We might also want something
   like :^rest to keep all the \"rest\" of the input as
   a string in a single argument.
   You may also accept a parameter to the argtype, for
@@ -144,7 +144,7 @@
   {:pre [(keyword? arg-type)
          (vector? argv)
          (>= (count argv) 2)]}
-  `(swap! *arg-types* 
+  `(swap! *arg-types*
           assoc
           ~arg-type
           (fn ~argv

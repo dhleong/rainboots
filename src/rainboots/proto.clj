@@ -144,12 +144,12 @@
                  :after (drop-bytes buf-seq (inc opt-idx))})
               ;; has a subnegotiation, and not incomplete
               has-sub?
-              {:telnet (get tn-codes 
+              {:telnet (get tn-codes
                             (nth-byte buf-seq opt-idx)
                             code)
                :opt (-> buf-seq
                         (drop-bytes (inc opt-idx))
-                        (take-bytes 
+                        (take-bytes
                           (min
                             max-sub-bytes
                             (- sub-end
@@ -166,7 +166,7 @@
                :after (drop-bytes buf-seq opt-idx)})))))))
 
 (defn split-line
-  "Given a sequence of non-telnet-escape bytes, if there is a 
+  "Given a sequence of non-telnet-escape bytes, if there is a
   \n character, return a tuple of [string, remaining], where
   `string` is the string value of the input, and `remaining`
   is the remaining sequence of bytes."
@@ -188,12 +188,12 @@
       (let [telnet-code (read-telnet-code buf-seq)]
         (cond
           ; there was a telnet code, but it's incomplete
-          (= :-incomplete telnet-code) 
+          (= :-incomplete telnet-code)
           [false this buf-seq]
           ; there was a full telnet code!
-          (map? telnet-code) 
-          [true 
-           (dissoc telnet-code :before :after) 
+          (map? telnet-code)
+          [true
+           (dissoc telnet-code :before :after)
            (concat-buf-seqs
              (:before telnet-code)
              (:after telnet-code))]
@@ -220,7 +220,7 @@
   (let [kind (get tn-keys (:telnet m) (:telnet m))
         opt (get tn-keys (:opt m) (:opt m))]
     (cond
-      ;; no :telnet key; must be, eg: {:will :term-type} 
+      ;; no :telnet key; must be, eg: {:will :term-type}
       (not kind)
       ;; TODO support this
       (throw (IllegalArgumentException.
@@ -248,10 +248,10 @@
   [s on-packet]
   (let [out (s/stream)]
     (s/connect
-      (s/map encode-packet out) 
+      (s/map encode-packet out)
       s)
-    (let [spliced 
-          (s/splice 
+    (let [spliced
+          (s/splice
             out
             (io/decode-stream s telnet-protocol))]
       (s/consume
