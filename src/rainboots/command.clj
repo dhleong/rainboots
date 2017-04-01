@@ -115,13 +115,16 @@
   on failure"
   [on-404 cli input]
   (let [[cmd args] (extract-command input)]
-    (if-let [fun (get @*commands* cmd)]
-      (do
-        (apply-cmd fun cli args)
-        true)
-      (do
-        (on-404 cli input)
-        false))))
+    (let [fun (get @*commands* cmd)]
+      (if (and fun
+               (apply-cmd fun cli args))
+        ; we found a matching command, and were
+        ; able to apply the input to it
+        true
+        ; else, no match :(
+        (do
+          (on-404 cli input)
+          false)))))
 
 (defn default-on-cmd
   "The default on-cmd handler; if there

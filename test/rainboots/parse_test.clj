@@ -17,7 +17,7 @@
 (deftest expand-args-test
   (testing "Expand basic types"
     (is (= ["one"] (expand-args :cli "one" [nil])))
-    (is (= ["one" "two"] 
+    (is (= ["one" "two"]
            (expand-args :cli "one  two " [nil nil]))))
   (testing "Mixed types"
     (binding [*arg-types* (atom {nil default-argtype-handler})]
@@ -117,12 +117,19 @@
         "Doesn't use input at all"
         [cli ^:nilable input]
         [(name cli) input])
-      (let [result (atom nil)]
+      (let [result (atom nil)
+            on-404 (fn [& _]
+                     (reset! result :404))]
         (defcmd implied-argtype-test-cmd
           [cli ^:implied implied-name]
           (reset! result implied-name))
+        ; first, pass an extra arg and make sure it 404s
+        (exec-command on-404 :cli "implied unused")
+        (is (= :404 @result))
+        ; now, reset and...
+        (reset! result nil)
         ; go!
-        (exec-command :404 :cli "implied")
+        (exec-command on-404 :cli "implied")
         (is (= "cli" @result))))))
 
 (deftest arg-exception-test

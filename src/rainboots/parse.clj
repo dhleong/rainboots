@@ -66,13 +66,16 @@
 (defn apply-cmd
   "Execute the provided cmd-fn, parsing its
   arguments as appropriate with any annotated
-  argtypes. See (defargtype)"
+  argtypes. See (defargtype). Returns `true`
+  if we found a matching function arity, else
+  `nil` if we did nothing"
   [cmd-fn cli raw-args]
   (let [arg-lists (:arg-lists (meta cmd-fn))]
     (if (and (= 1 (count arg-lists))
              (empty? (first arg-lists)))
       ;; easy case
-      (cmd-fn cli)
+      (do (cmd-fn cli)
+          true)
       ;; okay, try to expand all arg lists...
       (when-let [args
                  (->> arg-lists
@@ -88,7 +91,8 @@
           ;;  tell the client about it
           (send! cli (.getMessage err))
           ;; everything looks good! make it happen
-          (apply cmd-fn cli args))))))
+          (apply cmd-fn cli args))
+        true))))
 
 (defn extract-command
   "Splits input into [cmd, REST], where `cmd` is
