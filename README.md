@@ -191,7 +191,7 @@ Here's how to implement that `^:rest` type shown above:
   [input nil])
 ```
 
-What? That's it!? 
+What? That's it!?
 
 `defargtype` installs the argument type handler globally, and also uses `(defn)`-like
 syntax. Every handler MUST return a vector, whose first item is the resulting object,
@@ -207,7 +207,7 @@ want the item if it is on the ground. The argtype def should then look something
 (defargtype :item
   "An item somewhere"
   [cli input & [param]]
-  (cond 
+  (cond
     (= :on-ground param)
     ;; .. etc
     :else ;; ...
@@ -216,7 +216,7 @@ want the item if it is on the ground. The argtype def should then look something
 
 Argtypes may not always "work," however. Even if the user provided parse-able input,
 it might be invalid. Having to handle that everywhere you use an argtype is problematic,
-so you may return a `Throwable` instead of a value. If any argument is parsed to a 
+so you may return a `Throwable` instead of a value. If any argument is parsed to a
 `Throwable`, the message in the first `Throwable` found will be sent to the user, and
 your command handler will not be called. For example:
 
@@ -230,6 +230,24 @@ your command handler will not be called. For example:
     ;; no such item found:
     [(Exception. (str "I don't see any " input)), etc]))
 ```
+
+Sometimes, you might want an argtype that isn't directly supplied by the user's input, for
+example if you have combat commands that require a previously-specified target. Using an argtype
+is a convenient way to access this, and have the logic to verify the existence of that target
+be unified in a single place. For such an argtype, the input is generally not necessary, so
+you can mark it as `:nilable`, meaning that it's okay if it's `nil`—normally, an argtype is
+only called if there's some input left to handle. For example:
+
+```clojure
+(defargtype :target
+  "Your current target"
+  [cli ^:nilable input]
+  [(if-let [target (:target @cli)]
+    target
+    (Exception. "You must target something first"))
+    input])  ; return the input unchanged
+```
+
 
 ### Command sets
 

@@ -26,11 +26,11 @@
         [cli input]
         (let [m (re-seq #"(\S+\s+\S+)(\S*.*)$" input)]
           (-> m first rest)))
-      (is (= ["one  two"] 
+      (is (= ["one  two"]
              (expand-args :cli "one  two " [:read2])))
-      (is (= ["one  two" "three"] 
+      (is (= ["one  two" "three"]
              (expand-args :cli "one  two three" [:read2 nil])))
-      (is (= ["one" "two three"] 
+      (is (= ["one" "two three"]
              (expand-args :cli "one  two three" [nil :read2])))))
   (testing "Not enough args is nil"
     (is (nil? (expand-args :cli "one" [nil nil]))))
@@ -44,28 +44,37 @@
         (let [m (re-seq #"(\S+\s+\S+)(\S*.*)$" input)]
           (let [[v r] (-> m first rest)]
             [(str param v) r])))
-      (is (= ["one  two"] 
+      (is (= ["one  two"]
              (expand-args :cli "one  two " [:read2])))
-      (is (= ["foo:one  two" "three"] 
-             (expand-args :cli "one  two three" 
+      (is (= ["foo:one  two" "three"]
+             (expand-args :cli "one  two three"
                           [[:read2 "foo:"] nil]))))))
+
+(deftest argtype-meta-test
+  (testing "Nilable input"
+    (defargtype :with-nilable-input
+      "Doc"
+      [cli ^:nilable input]
+      ["got it" input])
+    (let [m (argtype-meta (var argtype$with-nilable-input))]
+      (is (true? (:nilable? m))))))
 
 (deftest argtype-test
   (testing "Default handler"
     (is (= ["first" "second  third"]
-           (default-argtype-handler 
+           (default-argtype-handler
              nil "first   second  third")))
     (is (= ["second" "third"]
-           (default-argtype-handler 
+           (default-argtype-handler
              nil "second  third")))
     (is (= ["third" nil]
-           (default-argtype-handler 
+           (default-argtype-handler
              nil "third")))
     ;; TODO probably, support quoted strings
     )
   ;
   (binding [*arg-types* (atom {})
-            *commands* (atom {})] 
+            *commands* (atom {})]
     (testing "Declare"
       (defargtype :item
         "An item usage"
@@ -101,11 +110,24 @@
         (is (= "ITEM:foo" @result))
         ;; 1-arity version
         (exec-command :404 :cli "arity")
-        (is (= "nothing!" @result))))))
+        (is (= "nothing!" @result))))
+    ;
+    (testing "Implied argtype"
+      (defargtype :implied
+        "Doesn't use input at all"
+        [cli ^:nilable input]
+        [(name cli) input])
+      (let [result (atom nil)]
+        (defcmd implied-argtype-test-cmd
+          [cli ^:implied implied-name]
+          (reset! result implied-name))
+        ; go!
+        (exec-command :404 :cli "implied")
+        (is (= "cli" @result))))))
 
 (deftest arg-exception-test
   (binding [*arg-types* (atom {})
-            *commands* (atom {})] 
+            *commands* (atom {})]
     (defargtype :error
       "Test error results"
       [cli input]
@@ -126,7 +148,7 @@
 
 (deftest parameterized-argtype-test
   (binding [*arg-types* (atom {})
-            *commands* (atom {})] 
+            *commands* (atom {})]
     (defargtype :item
       "An item usage"
       [cli input param]
