@@ -1,7 +1,7 @@
 (ns ^{:author "Daniel Leong"
       :doc "Command parsing"}
   rainboots.parse
-  (:require [clojure.string :refer [split]]
+  (:require [clojure.string :refer [split] :as str]
             [rainboots.comms :refer [send!]]))
 
 (defn- strim
@@ -11,16 +11,48 @@
   (when string
     (.trim string)))
 
+(defn extract-word
+  "ASSUMES the input is trim'd. Extract the first 'word',
+  returning a sequence of the full match of that 'word'
+  plus any whitespace after it, and the actual intended
+  input. For quoted input, this means the first item
+  will include the quotes and any trailing whitespace,
+  and the second item will not"
+  [^CharSequence s]
+  (let [in-quote? (= \" (.charAt s 0))
+        len (.length s)
+        expand-whitespace
+        (fn [i]
+          (if (and (< i len)
+                   (Character/isWhitespace
+                     (.charAt s i)))
+            (recur (inc i))
+            i))]
+    (loop [i (if in-quote?  1 0)]
+      (if (>= i len)
+        [s s]
+        (let [c (.charAt s i)
+              quote? (and (= \" c)
+                          (or (= i 0)
+                              (not= \\ (.charAt s (dec i)))))]
+          (cond
+            (and quote? in-quote?)
+            [(subs s 0 (expand-whitespace (inc i)))
+             (subs s 1 i)]
+            (and (Character/isWhitespace c)
+                 (not in-quote?))
+            [(subs s 0 (expand-whitespace (inc i)))
+             (subs s 0 i)]
+            :else
+            (recur (inc i))))))))
+
 (defn default-argtype-handler
   [cli input]
-  (let [input (.trim input)
-        [full value]
-        (first
-          (re-seq #"(\S+)(\s+|$)" input))
-        full-len (count full)
+  (let [input (strim input)
+        [full-match value] (extract-word input)
+        full-len (count full-match)
         remaining (when (< full-len (count input))
                     (subs input full-len))]
-    ; TODO probably, support quoted strings
     [value remaining]))
 
 (defonce ^:dynamic *arg-types*

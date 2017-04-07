@@ -14,11 +14,25 @@
   (testing "Command with arg"
     (is (= ["look" "e"] (extract-command "look e")))))
 
+(deftest extract-word-test
+  (testing "Only world"
+    (is (= ["mreynolds" "mreynolds"] (extract-word "mreynolds")))
+    (is (= ["mreynolds   " "mreynolds"] (extract-word "mreynolds   "))))
+  (testing "Multi word"
+    (is (= ["kaylee  " "kaylee"] (extract-word "kaylee  frye"))))
+  (testing "Quoted phrase"
+    (is (= ["\"keep flying\"", "keep flying"]
+           (extract-word "\"keep flying\"")))
+    (is (= ["\"keep flying\"  ", "keep flying"]
+           (extract-word "\"keep flying\"  ")))))
+
 (deftest expand-args-test
   (testing "Expand basic types"
     (is (= ["one"] (expand-args :cli "one" [nil])))
     (is (= ["one" "two"]
-           (expand-args :cli "one  two " [nil nil]))))
+           (expand-args :cli "one  two " [nil nil])))
+    (is (= ["one  two" "three"]
+           (expand-args :cli "\"one  two\"  three " [nil nil]))))
   (testing "Mixed types"
     (binding [*arg-types* (atom {nil default-argtype-handler})]
       (defargtype :read2
@@ -71,6 +85,9 @@
            (default-argtype-handler
              nil "third")))
     ;; TODO probably, support quoted strings
+    #_(is (= ["fourth   fifth" nil]
+           (default-argtype-handler
+             nil " \"fourth   fifth\"  ")))
     )
   ;
   (binding [*arg-types* (atom {})
