@@ -290,14 +290,14 @@ For example:
 
 ; magic-items.clj:
 (hook! :wear-item
-  (fn [& {:keys [cli item] :as arg}]
+  (fn [{:keys [cli item] :as arg}]
     (when-let [magic (:magic item)]
       (apply-magic! cli magic))
     arg))
 
 ; armor.clj:
 (hook! :wear-item
-  (fn [& {:keys [cli item] :as arg}]
+  (fn [{:keys [cli item] :as arg}]
     (when-let [armor (:armor item)]
       (apply-armor! cli armor))
     arg))
@@ -315,6 +315,15 @@ For example:
     ;;  the semantics of each hook is up to you!
     (add-equip! cli item))
 ```
+
+#### Builtin hooks
+
+Rainboots uses hooks internally to provide ways for you to extend or replace
+default behaviors.
+
+Hook | Description
+---- | -----------
+`:process-send!` | All strings sent with `(send!)` are processed by triggering the `:process-send!` hook with a map containing the recipient as `:cli` and the text to send as `:text`.  This is how the built-in colorization is applied, which means you can fully disable it by doing `(unhook! :process-send! rainbooks.comms/default-colorize-hook)`.
 
 ### Colors
 

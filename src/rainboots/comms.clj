@@ -4,9 +4,23 @@
   (:require [aleph.tcp :as tcp]
             [manifold.stream :as s]
             [rainboots
-             [color :refer [process-colors strip-colors]]]))
+             [color :refer [process-colors strip-colors]]
+             [hooks :refer [hook! trigger!]]]))
 
 (def ^:dynamic *svr*)
+
+(defn default-colorize-hook
+  "Default hook fn for colorizing output, installed
+  by default. Automatically strips color codes if
+  the client has declared it doesn't support them."
+  [{:keys [cli text] :as arg}]
+  (assoc arg
+         :text
+         (if (:colors @cli)
+           (process-colors text)
+           (strip-colors text))))
+
+(hook! :process-send! default-colorize-hook)
 
 (defn send!
   "Send text to the client. You can pass in a variable
@@ -18,16 +32,21 @@
   Strings, and any string returned by a function argument
   or in a vector, will be processed for color sequences
   (see the colors module).
-  Maps will be treated as telnet sequences (see telnet!)"
+  Maps will be treated as telnet sequences (see telnet!)
+  Strings are processed via the :process-send! hook,
+  which is how the colors are applied. :process-send!
+  is triggered with a map containing the recipient as
+  :cli and the text as :text."
   [cli & body]
   (when-let [s (:stream @cli)]
     (doseq [p body]
       (when p
         (condp #(%1 %2) p
           vector? (apply send! cli p)
-          string? (s/put! s (if (:colors @cli)
-                              (process-colors p)
-                              (strip-colors p)))
+          string? (s/put! s (:text
+                              (trigger! :process-send!
+                                        {:cli cli
+                                         :text p})))
           map? (s/put! s p)
           fn? (send! cli (p cli)))))
     (s/put! s "\r\n")))

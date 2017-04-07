@@ -10,14 +10,18 @@
   the one before it. The argument(s) passed to a hook are
   arbitrary, but each hook MUST return the same 'type'
   of data it received, so as to play nicely with other
-  installed hooks of the same kind. 
-  The name of a hook is similarly arbitrary---it may be a 
+  installed hooks of the same kind.
+  The name of a hook is similarly arbitrary---it may be a
   String or a Keyword or whatever you want, as long as you
   use it consistently."
   [hook-name fun]
-  ;; TODO can we guarantee FIFO ordering of application?
-  ;;  is that even important?
   (swap! hooks update hook-name conj fun))
+
+(defn insert-hook!
+  "Insert a fn as the first to be called for the given hook,
+  before any already-registered hooks. See hook!"
+  [hook-name fun]
+  (swap! hooks update hook-name concat [fun]))
 
 (defn trigger!
   "Trigger a hook kind. hook-name should be a previously
