@@ -323,7 +323,7 @@ default behaviors.
 
 Hook | Description
 ---- | -----------
-`:process-send!` | All strings sent with `(send!)` are processed by triggering the `:process-send!` hook with a map containing the recipient as `:cli` and the text to send as `:text`.  This is how the built-in colorization is applied, which means you can fully disable it by doing `(unhook! :process-send! rainbooks.comms/default-colorize-hook)`.
+`:process-send!` | All strings sent with `(send!)` are processed by triggering the `:process-send!` hook with a map containing the recipient as `:cli` and the text to send as `:text`.  This is how the built-in colorization is applied, which means you can fully disable it by doing `(unhook! :process-send! rainbooks.comms/default-colorize-hook)`.<br><br>In fact, `(send!)`, `(send-if!)`, and `(send-all!)` all support an optional first parameter `process-extras` which is a map whose keys and values will be included in the argument to the `:process-send!` hook, so you can include provide extra information to your own custom output processing functions.
 
 ### Colors
 

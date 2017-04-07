@@ -15,13 +15,29 @@
   String or a Keyword or whatever you want, as long as you
   use it consistently."
   [hook-name fun]
-  (swap! hooks update hook-name conj fun))
+  (swap! hooks
+         update hook-name
+         (fn [hook-list]
+           (if (or (nil? hook-list)
+                   (= -1 (.indexOf hook-list fun)))
+             (conj hook-list fun)
+             hook-list))))
 
 (defn insert-hook!
   "Insert a fn as the first to be called for the given hook,
   before any already-registered hooks. See hook!"
   [hook-name fun]
-  (swap! hooks update hook-name concat [fun]))
+  (swap! hooks
+         update hook-name
+         (fn [hook-list]
+           (let [hook-list (when hook-list
+                             (remove (partial identical? fun) hook-list))]
+             (concat hook-list [fun])))))
+
+(defn installed-hooks
+  "Get the list of installed hook funs for the given hook"
+  [hook-name]
+  (get @hooks hook-name))
 
 (defn trigger!
   "Trigger a hook kind. hook-name should be a previously

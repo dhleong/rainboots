@@ -4,6 +4,7 @@
             [rainboots
              [core :refer :all]
              [color :refer [ansi-esc]]
+             [hooks :refer [hook! unhook!]]
              [proto :refer :all]]))
 
 (deftest cmds-stack-test
@@ -73,3 +74,15 @@
     (with-cli
       (send! cli "{YReynolds")
       (is (= (take!) "Reynolds")))))
+
+(deftest send!-hook-test
+  (defn send-hook
+    [{:keys [prefix text] :as arg}]
+    (assoc arg :text (str prefix text)))
+  (hook! :process-send! send-hook)
+  (testing "Provide process-extras"
+    (with-cli
+      (send! {:prefix "Mal "}
+             cli "Reynolds")
+      (is (= (take!) (str "Mal Reynolds")))))
+  (unhook! :process-send! send-hook))
