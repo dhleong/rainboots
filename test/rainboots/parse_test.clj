@@ -7,6 +7,9 @@
              [parse :refer :all]]))
 
 (deftest extract-command-test
+  (testing "Empty input"
+    (is (= [nil nil] (extract-command "")))
+    (is (= [nil nil] (extract-command "  "))))
   (testing "Single command"
     (is (= ["look" nil] (extract-command "look")))
     (is (= ["look" nil] (extract-command " look")))
@@ -15,6 +18,8 @@
     (is (= ["look" "e"] (extract-command "look e")))))
 
 (deftest extract-word-test
+  (testing "Nothing at all"
+    (is (nil? (extract-word ""))))
   (testing "Only world"
     (is (= ["mreynolds" "mreynolds"] (extract-word "mreynolds")))
     (is (= ["mreynolds   " "mreynolds"] (extract-word "mreynolds   "))))
