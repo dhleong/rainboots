@@ -32,15 +32,15 @@
   [fun]
   (let [m (meta fun)
         arglists (:arglists m)]
-    {:name (-> m :name str)
-     :doc (-> m :doc)
-     :arg-lists
-     ;; TODO support the & rest-args deconstruction?
-     (->> arglists
-          (map
-            #(->> %
-                  (drop 1)
-                  (map (comp drop-obvious first meta)))))}))
+    (-> m
+        (dissoc :arglists)
+        ;; TODO support the & rest-args deconstruction?
+        (assoc :arg-lists
+               (->> arglists
+                    (map
+                      #(->> %
+                            (drop 1)
+                            (map (comp drop-obvious first meta)))))))))
 
 ;;
 ;; Public interface

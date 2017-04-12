@@ -28,7 +28,7 @@
       nil)
     (let [m (cmd-meta (var cmd-meta-test-cmd-fn))
           args (first (:arg-lists m))]
-      (is (= "cmd-meta-test-cmd-fn" (:name m)))
+      (is (= "cmd-meta-test-cmd-fn" (name (:name m))))
       (is (= "Test function" (:doc m)))
       (is (= :item (first args)))
       (is (= :eq (second args)))
@@ -53,7 +53,7 @@
       nil)
     (let [m (cmd-meta (var cmd-meta-test-cmd-fn))
           args (first (:arg-lists m))]
-      (is (= "cmd-meta-test-cmd-fn" (:name m)))
+      (is (= "cmd-meta-test-cmd-fn" (name (:name m))))
       (is (= "Test function" (:doc m)))
       (is (= [:item :in-storage] (first args)))
       (is (= [:eq :held] (second args)))
