@@ -75,6 +75,39 @@
       (send! cli "{YReynolds")
       (is (= (take!) "Reynolds")))))
 
+(deftest send-if!-test
+  (testing "Send always"
+    (with-cli
+      (binding [rainboots.comms/*svr*
+                (atom {:connected (atom [cli])})]
+        (send-if! (constantly true) "Keep Flyin")
+        (is (= (take!) "Keep Flyin")))))
+  ;
+  (testing "Send always with process-extras"
+    (with-cli
+      (binding [rainboots.comms/*svr*
+                (atom {:connected (atom [cli])})]
+        (send-if! {:process :extra} (constantly true) "Keep Flyin2")
+        (is (= (take!) "Keep Flyin2")))))
+  ;
+  (testing "send-all!"
+    (with-cli
+      (binding [rainboots.comms/*svr*
+                (atom {:connected (atom [cli])})]
+        (send-all! "Keep Flyin")
+        (is (= (take!) "Keep Flyin")))))
+  ;
+  (testing "send-all! with process-extras"
+    (with-cli
+      (binding [rainboots.comms/*svr*
+                (atom {:connected (atom [cli])})]
+        (send-all! {:process :extra} "Keep Flyin2")
+        (is (= (take!) "Keep Flyin2")))))
+  ;
+  (testing "send-if before server init'd"
+    (with-cli
+      (send-all! "Don't crash"))))
+
 (deftest send!-hook-test
   (defn send-hook
     [{:keys [prefix text] :as arg}]

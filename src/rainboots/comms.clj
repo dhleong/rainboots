@@ -30,17 +30,20 @@
   This then declares `process-extras` and shifts vars around
   as appropriate."
   [cli-var & body]
-  (let [cli-decl (if cli-var
+  (let [cli-decl (when cli-var
                    `(~cli-var (if ~'has-extras?
                                 ~cli-var
-                                ~'process-extras?)))]
-    `(let [~'has-extras? (not (instance? clojure.lang.IDeref ~'process-extras?))
+                                ~'process-extras?)))
+        no-extras-body (if cli-var
+                         `(cons ~cli-var ~'body)
+                         `(cons ~'process-extras? ~'body))]
+    `(let [~'has-extras? (map? ~'process-extras?)
            ~'process-extras (if ~'has-extras?
                               ~'process-extras?
                               {})
            ~'body (if ~'has-extras?
                     ~'body
-                    (cons ~cli-var ~'body))
+                    ~no-extras-body)
            ~@cli-decl]
        ~@body)))
 
@@ -92,11 +95,13 @@
                 [process-extras pred & body])}
   send-if!
   (fn [process-extras? pred & body]
-    (when-let [clients (seq @(:connected @*svr*))]
-      (with-extras pred
-        (doseq [cli clients]
-          (when (pred cli)
-            (apply send! process-extras cli body)))))))
+    (when (bound? #'*svr*)
+      (when-let [connected (:connected @*svr*)]
+        (when-let [clients (seq @connected)]
+          (with-extras pred
+            (doseq [cli clients]
+              (when (pred cli)
+                (apply send! process-extras cli body)))))))))
 
 (def
   ^{:doc
@@ -108,7 +113,7 @@
   send-all!
   (fn [process-extras? & body]
     (with-extras nil
-      (apply send-if! (constantly true) body))))
+      (apply send-if! process-extras (constantly true) body))))
 
 (defn redef-svr!
   [svr]
