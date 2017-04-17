@@ -116,11 +116,11 @@
   the default commands set; returns true
   on success; calls on-404 and returns false
   on failure"
-  [on-404 cli input]
+  [on-404 can-exec? cli input]
   (let [[cmd args] (extract-command input)]
     (let [fun (get @*commands* cmd)]
       (if (and fun
-               (apply-cmd fun cli args))
+               (apply-cmd can-exec? fun cli args))
         ; we found a matching command, and were
         ; able to apply the input to it
         true
@@ -134,7 +134,10 @@
   is anything on the input stack, it will
   delegate to that. Othewise, it will call
   (exec-command) with the default cmdset"
-  [on-404 cli input]
-  (if-let [handler (last @(:input-stack @cli))]
-    (handler on-404 cli input)
-    (exec-command on-404 cli input)))
+  [on-err on-404 can-exec? cli input]
+  (try
+    (if-let [handler (last @(:input-stack @cli))]
+      (handler on-404 can-exec? cli input)
+      (exec-command on-404 can-exec? cli input))
+    (catch Throwable e
+      (on-err cli e))))

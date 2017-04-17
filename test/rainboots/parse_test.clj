@@ -111,7 +111,7 @@
         (defcmd argtype-test-cmd
           [cli ^:item item]
           (reset! result item))
-        (exec-command :404 :cli "argtype foo")
+        (exec-command :404 (constantly true) :cli "argtype foo")
         (is (= "ITEM:foo" @result))))
     ;
     (testing "Use (3-arity arity)"
@@ -124,13 +124,13 @@
           ([cli]
            (reset! result "nothing!")))
         ;; 3-arity version...
-        (exec-command :404 :cli "arity first second")
+        (exec-command :404 (constantly true) :cli "arity first second")
         (is (= ["ITEM:first" "ITEM:second"] @result))
         ;; 2-arity version...
-        (exec-command :404 :cli "arity foo")
+        (exec-command :404 (constantly true) :cli "arity foo")
         (is (= "ITEM:foo" @result))
         ;; 1-arity version
-        (exec-command :404 :cli "arity")
+        (exec-command :404 (constantly true) :cli "arity")
         (is (= "nothing!" @result))))
     ;
     (testing "Implied argtype"
@@ -145,12 +145,12 @@
           [cli ^:implied implied-name]
           (reset! result implied-name))
         ; first, pass an extra arg and make sure it 404s
-        (exec-command on-404 :cli "implied unused")
+        (exec-command on-404 (constantly true) :cli "implied unused")
         (is (= :404 @result))
         ; now, reset and...
         (reset! result nil)
         ; go!
-        (exec-command on-404 :cli "implied")
+        (exec-command on-404 (constantly true) :cli "implied")
         (is (= "cli" @result))))))
 
 (deftest arg-exception-test
@@ -170,7 +170,7 @@
         (send! cli "Success!?"))
       (let [stream (s/stream)
             cli (atom {:stream stream})]
-        (exec-command :404 cli "except luck")
+        (exec-command :404 (constantly true) cli "except luck")
         (is (= "No such luck"
                @(s/try-take! stream 10)))))))
 
@@ -190,5 +190,5 @@
         (defcmd param-argtype-test-cmd
           [cli ^{:item :in-storage} item]
           (reset! result item))
-        (exec-command :404 :cli "param foo")
+        (exec-command :404 (constantly true) :cli "param foo")
         (is (= "ITEM:foo:in-storage" @result))))))

@@ -97,35 +97,42 @@
                 (strim else)))))))))
 
 (defn apply-cmd
-  "Execute the provided cmd-fn, parsing its
-  arguments as appropriate with any annotated
-  argtypes. See (defargtype). Returns `true`
-  if we found a matching function arity, else
-  `nil` if we did nothing"
-  [cmd-fn cli raw-args]
-  (let [arg-lists (:arg-lists (meta cmd-fn))]
-    (if (and (= 1 (count arg-lists))
-             (empty? (first arg-lists)))
-      ;; easy case
-      (do (cmd-fn cli)
-          true)
-      ;; okay, try to expand all arg lists...
-      (when-let [args
-                 (->> arg-lists
-                      (map
-                        (partial expand-args cli raw-args))
-                      (filter some?)
-                      (sort-by count)
-                      last)] ;; ... take the longest match
-        (if-let [err (some
-                       #(when (instance? Throwable %) %)
-                       args)]
-          ;; error handling a successfully parsed arg;
-          ;;  tell the client about it
-          (send! cli (.getMessage err))
-          ;; everything looks good! make it happen
-          (apply cmd-fn cli args))
-        true))))
+  "Execute the provided cmd-fn, parsing its arguments as appropriate
+  with any annotated argtypes. See (defargtype).
+  The optional first arg `can-exec?` is a (fn [cli cmd]) which will
+  be called with the cmd-fn if all the args were successfully parsed
+  to make sure it can be executed. `can-exec?` is responsible for
+  informing `cli` why it can't execute a command.  If not provided,
+  all commands can always be executed.
+  Returns `true` if we found a matching function arity, else `nil`
+  if we did nothing"
+  ([cmd-fn cli raw-args]
+   (apply-cmd (constantly true) cmd-fn cli raw-args))
+  ([can-exec? cmd-fn cli raw-args]
+   (let [arg-lists (:arg-lists (meta cmd-fn))]
+     (if (and (= 1 (count arg-lists))
+              (empty? (first arg-lists)))
+       ;; easy case
+       (do (cmd-fn cli)
+           true)
+       ;; okay, try to expand all arg lists...
+       (when-let [args
+                  (->> arg-lists
+                       (map
+                         (partial expand-args cli raw-args))
+                       (filter some?)
+                       (sort-by count)
+                       last)] ;; ... take the longest match
+         (if-let [err (some
+                        #(when (instance? Throwable %) %)
+                        args)]
+           ;; error handling a successfully parsed arg;
+           ;;  tell the client about it
+           (send! cli (.getMessage err))
+           ;; everything looks good! make it happen
+           (when (can-exec? cli cmd-fn)
+             (apply cmd-fn cli args)))
+         true)))))
 
 (defn extract-command
   "Splits input into [cmd, REST], where `cmd` is

@@ -15,9 +15,9 @@
         (defcmd foo [cli] (reset! returned "foo")))
       (testing "CmdSet is executable"
         (is (nil? @returned))
-        (is (true? (exec-command nil nil "bar")))
+        (is (true? (exec-command nil (constantly true) nil "bar")))
         (is (= "bar" @returned))
-        (is (true? (test-set nil nil "foo")))
+        (is (true? (test-set nil (constantly true) nil "foo")))
         (is (= "foo" @returned))))))
 
 (deftest cmd-meta-test

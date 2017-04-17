@@ -204,6 +204,10 @@
                will handle :term-type and fill out
                a set in :term-types of the client map
   Callbacks:
+  :can-exec? (fn [cli cmd]) Called to check if `cli` is
+             allowed to execute `cmd`. Return truthy if yes,
+             else return falsy and notify the client why.
+             Only applies when using the default :on-cmd
   :on-auth (fn [cli line]) Called on each
            raw line of input from the client
            until they have something in the
@@ -212,21 +216,30 @@
            character info.
   :on-cmd (fn [cli cmd]) Called on each command
           input from an auth'd client.
+  :on-err (fn [cli e]) Called if a client-executed command
+          throw a Throwable; only applies when using the
+          default on-cmd
   :on-prompt (fn [cli]) Called when it's time to show
              the client a prompt. Return a string or
              a sequence and it will be passed or (apply)'d
              to (send!), respectively."
   [& {:keys [port
              telnet-opts
+             can-exec?
              on-auth on-cmd
              on-404
+             on-err
              on-connect on-disconnect
              on-prompt prompt-delay
              on-telnet]
       :or {port default-port
            telnet-opts default-telnet-opts
+           can-exec? `(constantly true)
            on-404 `(fn [cli# & etc#]
                      (send! cli# "Huh?"))
+           on-err `(fn [cli# e#]
+                     (log e#)
+                     (send! cli# "{Y<< {RERROR: {WSomething went wrong. {Y>>{n"))
            on-disconnect `(constantly nil)
            prompt-delay default-prompt-delay
            on-telnet `(constantly nil)}
@@ -235,7 +248,8 @@
   ;;  even from a macro:
   (let [on-cmd (if on-cmd
                  on-cmd
-                 `(partial default-on-cmd ~on-404))]
+                 `(partial default-on-cmd
+                           ~on-err ~on-404 ~can-exec?))]
     `(#'-start-server
        :port ~port
        :telnet-opts ~telnet-opts
@@ -291,12 +305,15 @@
   input stack. Only function at the top of this
   stack receives input. This is only meaningful
   if you haven't provided your own on-cmd handler
-  (but why would you?). 
-  The provided cmd-set can be anything declared 
+  (but why would you?).
+  The provided cmd-set can be anything declared
   with (defcmdset), or, in fact, any function
-  that looks like (fn [on-404 cli input]), where:
-  `on-404 is the function configured for
-  when a command doesn't exist; 
+  that looks like (fn [on-404 can-exec? cli input]), where:
+  `on-404` is the function configured for when a command
+           doesn't exist;
+  `can-exec?` is a (fn [cli cmd]), where `cmd` is the
+              a fn created by defcmd that `cli` is hoping
+              to execute.
   `cli` is the client providing the input; and
   `input` is the raw String input line"
   [cli cmd-set]
