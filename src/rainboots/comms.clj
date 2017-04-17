@@ -1,7 +1,8 @@
 (ns ^{:author "Daniel Leong"
       :doc "Communication functions; copied for convenience into core"}
   rainboots.comms
-  (:require [aleph.tcp :as tcp]
+  (:require [clojure.core.async :refer [put!]]
+            [aleph.tcp :as tcp]
             [manifold.stream :as s]
             [rainboots
              [color :refer [process-colors strip-colors]]
@@ -71,19 +72,24 @@
   send!
   (fn [process-extras? cli & body]
     (with-extras cli
-      (when-let [s (:stream @cli)]
-        (doseq [p body]
-          (when p
-            (condp #(%1 %2) p
-              vector? (apply send! cli p)
-              string? (s/put! s (:text
-                                  (trigger! :process-send!
-                                            (assoc process-extras
-                                                   :cli cli
-                                                   :text p))))
-              map? (s/put! s p)
-              fn? (send! cli (p cli)))))
-        (s/put! s "\r\n")))))
+      (let [cli' @cli]
+        (when-let [s (:stream cli')]
+          (doseq [p body]
+            (when p
+              (condp #(%1 %2) p
+                vector? (apply send! process-extras cli p)
+                string? (s/put! s (:text
+                                    (trigger! :process-send!
+                                              (assoc process-extras
+                                                     :cli cli
+                                                     :text p))))
+                map? (s/put! s p)
+                fn? (send! process-extras cli (p cli)))))
+          (s/put! s "\r\n")
+          ; attempt to prompt
+          (when-not (:rainboots/in-prompt process-extras)
+            (when-let [prompt-chan (:rainboots/prompt-chan cli')]
+              (put! prompt-chan cli))))))))
 
 (def
   ^{:doc

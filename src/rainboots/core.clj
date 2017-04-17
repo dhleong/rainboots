@@ -1,7 +1,8 @@
 (ns ^{:author "Daniel Leong"
-      :doc "Core interface"} 
+      :doc "Core interface"}
   rainboots.core
-  (:require [aleph.tcp :as tcp]
+  (:require [clojure.core.async :as async :refer [<! chan mix admix unmix]]
+            [aleph.tcp :as tcp]
             [manifold.stream :as s]
             [potemkin :refer [import-vars]]
             [rainboots
@@ -14,6 +15,8 @@
 
 (def default-port 4321)
 
+(def default-prompt-delay 15)
+
 ;; copy from comms for convenience
 (import-vars
   [rainboots.comms
@@ -24,11 +27,51 @@
 
 (declare telnet!)
 
+(defn throttle
+  "Read from ch until it closes, throttling reads such that
+  only the last value emitted without any others following
+  for `duration` ms will be accepted; read values will be
+  passed to f."
+  [ch f duration]
+  (async/go-loop
+    [last-val nil]
+    (when last-val
+      (<! (async/timeout duration)))
+    (if-let [polled (async/poll! ch)]
+      ; still more
+      (recur polled)
+      ; none yet!
+      (do
+        ; trigger on last-val
+        (when last-val
+          (f last-val))
+        ; try to read; if it is nil, the channel was closed
+        (when-let [v (<! ch)]
+          (recur v))))))
+
 (defn- make-client
-  [stream]
-  {:stream stream
-   :term-types #{}
-   :input-stack (atom[])})
+  [svr stream]
+  (let [{:keys [on-prompt prompt-delay]} @svr
+        prompt-chan (chan (async/sliding-buffer 1))]
+    ;
+    (when on-prompt
+      (throttle
+        prompt-chan
+        (fn [to-prompt]
+          (when-let [prompt (on-prompt to-prompt)]
+            (if-let [as-seq (seq prompt)]
+              (apply send! {:rainboots/in-prompt true}
+                     to-prompt
+                     as-seq)
+              (send! {:rainboots/in-prompt true}
+                     to-prompt
+                     prompt))))
+        prompt-delay))
+    ;
+    {:stream stream
+     :term-types #{}
+     :input-stack (atom [])
+     :rainboots/prompt-chan prompt-chan}))
 
 (defmacro with-binds
   [& body]
@@ -90,7 +133,7 @@
                 ;; simple; telnet pkt
                 (handle-telnet client pkt
                                telnet-opts on-telnet)))))]
-    (reset! client (make-client wrapped))
+    (reset! client (make-client svr wrapped))
     (swap! (:connected @svr) conj client)
     (with-binds
       (on-connect client))
@@ -98,6 +141,9 @@
       s
       (fn []
         (swap! (:connected @svr) disj client)
+        (when-let [prompt-chan (:rainboots/prompt-chan @client)]
+          ; stop prompting
+          (async/close! prompt-chan))
         (with-binds
           (on-disconnect client))))
     ;; request terminal type
@@ -113,18 +159,21 @@
 (defn- -start-server
   "NB: You should use (start-server)
   instead of using this directly."
-  [& {:keys [port 
+  [& {:keys [port
              on-auth on-cmd
              on-404
              on-connect on-disconnect
-             on-telnet] 
-      :as opts}] 
+             on-prompt prompt-delay
+             on-telnet]
+      :as opts}]
   {:pre [(not (nil? on-connect))
          (not (nil? on-cmd))
          (not (nil? on-auth))]}
-  (let [obj (atom {:connected (atom #{})})
-        svr (tcp/start-server 
-              (partial handler obj opts) 
+  (let [obj (atom {:connected (atom #{})
+                   :on-prompt on-prompt
+                   :prompt-delay prompt-delay})
+        svr (tcp/start-server
+              (partial handler obj opts)
               opts)]
     (swap! obj assoc :closable svr)
     ;; re-def dynamically so there's some
@@ -145,7 +194,9 @@
   and still easily update them via repl.
   Options:
   :port Port on which to start the server
-  :telnet-opts A set of handled telnet op codes. 
+  :prompt-delay Milliseconds to wait after a send!
+               to trigger :on-prompt
+  :telnet-opts A set of handled telnet op codes.
                will automatically specify 'WILL'
                for these opts. May be keywords
                specified in rainboots.proto, or
@@ -155,23 +206,29 @@
   Callbacks:
   :on-auth (fn [cli line]) Called on each
            raw line of input from the client
-           until they have something in the 
-           :ch field of the `cli` atom. This 
-           should be where you store the 
+           until they have something in the
+           :ch field of the `cli` atom. This
+           should be where you store the
            character info.
   :on-cmd (fn [cli cmd]) Called on each command
-          input from an auth'd client."
-  [& {:keys [port 
+          input from an auth'd client.
+  :on-prompt (fn [cli]) Called when it's time to show
+             the client a prompt. Return a string or
+             a sequence and it will be passed or (apply)'d
+             to (send!), respectively."
+  [& {:keys [port
              telnet-opts
-             on-auth on-cmd 
+             on-auth on-cmd
              on-404
              on-connect on-disconnect
-             on-telnet] 
+             on-prompt prompt-delay
+             on-telnet]
       :or {port default-port
            telnet-opts default-telnet-opts
            on-404 `(fn [cli# & etc#]
                      (send! cli# "Huh?"))
            on-disconnect `(constantly nil)
+           prompt-delay default-prompt-delay
            on-telnet `(constantly nil)}
       :as opts}]
   ;; NB: this lets us call the private function
@@ -182,12 +239,15 @@
     `(#'-start-server
        :port ~port
        :telnet-opts ~telnet-opts
+       :prompt-delay ~prompt-delay
        :on-auth (wrap-fn ~on-auth)
        :on-connect (wrap-fn ~on-connect)
        :on-cmd (wrap-fn ~on-cmd)
        :on-404 (wrap-fn ~on-404)
        :on-disconnect (wrap-fn ~on-disconnect)
-       :on-telnet (wrap-fn ~on-telnet))))
+       :on-telnet (wrap-fn ~on-telnet)
+       :on-prompt ~(when on-prompt
+                     `(wrap-fn ~on-prompt)))))
 
 (defn stop-server
   [server]

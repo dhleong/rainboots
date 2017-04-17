@@ -29,6 +29,11 @@
   (println "! Connected: " cli)
   (send! cli "{WHello!" "\r\n{yLogin {Gnow:{n"))
 
+(defn on-prompt
+  [cli]
+  (when-let [ch (:ch @cli)]
+    ["\n{Y<{WHello: {n" (:name ch) "{Y>{n"]))
+
 (defn on-telnet
   [cli pkt]
   (println "# Telnet: " pkt))
@@ -49,9 +54,11 @@
 
 (defcmd look
   ([cli]
-   (send! cli "You look around."))
+   (send! cli "You look around.")
+   (send! cli "There's not much here.")
+   (send! cli "What can I say? It's just a sample.")
+   (send! cli "But... you do feel excited by the possibilities!"))
   ([cli dir]
-   (println "Look:" dir)
    (send! cli "You look: " dir)))
 
 (defcmd buffer
@@ -79,7 +86,8 @@
       :port 4321
       :on-auth on-auth
       :on-connect on-connect
-      :on-telnet on-telnet)))
+      :on-telnet on-telnet
+      :on-prompt on-prompt)))
 
 (defn stop-sample
   []
