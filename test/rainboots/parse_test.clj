@@ -89,11 +89,10 @@
     (is (= ["third" nil]
            (default-argtype-handler
              nil "third")))
-    ;; TODO probably, support quoted strings
-    #_(is (= ["fourth   fifth" nil]
+    ; quoted strings
+    (is (= ["fourth   fifth" nil]
            (default-argtype-handler
-             nil " \"fourth   fifth\"  ")))
-    )
+             nil " \"fourth   fifth\"  "))))
   ;
   (binding [*arg-types* (atom {})
             *commands* (atom {})]
