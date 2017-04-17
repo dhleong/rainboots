@@ -11,6 +11,11 @@
   the original can be updated by repl
   and have the changes reflected"
   [fun]
-  `(fn [& args#]
-     (apply ~fun args#)))
+  (let [wrapped-name
+        (when (symbol? fun)
+          [(symbol
+             (str "wrapped>"
+                  (name fun)))])]
+    `(fn ~@wrapped-name [& args#]
+       (apply ~fun args#))))
 

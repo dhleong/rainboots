@@ -29,10 +29,11 @@
 (defn cmd-meta
   "Extract meta information for a command
   function, given its var"
-  [fun]
+  [fun extra-meta]
   (let [m (meta fun)
         arglists (:arglists m)]
-    (-> m
+    (-> extra-meta
+        (merge m)
         (dissoc :arglists)
         ;; TODO support the & rest-args deconstruction?
         (assoc :arg-lists
@@ -86,7 +87,8 @@
         body (if has-doc?
                (next decl)
                decl)
-        no-abbrv? (:no-abbrv (meta cmd-name))
+        user-meta (meta cmd-name) ; any user-provided meta info
+        no-abbrv? (:no-abbrv user-meta)
         fn-name (str cmd-name) ;; let's just use it directly
         fn-var (symbol fn-name)
         invoke (str cmd-name)
@@ -98,7 +100,8 @@
                       ~@body)
            ~'wrapped (with-meta
                        (wrap-fn ~fn-var)
-                       (cmd-meta (var ~fn-var)))]
+                       (cmd-meta (var ~fn-var)
+                                 ~user-meta))]
        (swap! *commands*
               assoc
               ~@(mapcat

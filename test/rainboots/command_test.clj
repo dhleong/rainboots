@@ -26,7 +26,7 @@
       "Test function"
       [cli ^:item item ^:eq equip text]
       nil)
-    (let [m (cmd-meta (var cmd-meta-test-cmd-fn))
+    (let [m (cmd-meta (var cmd-meta-test-cmd-fn) {})
           args (first (:arg-lists m))]
       (is (= "cmd-meta-test-cmd-fn" (name (:name m))))
       (is (= "Test function" (:doc m)))
@@ -40,10 +40,34 @@
        nil)
       ([cli]
        nil))
-    (let [m (cmd-meta (var cmd-meta-test-2arity))
+    (let [m (cmd-meta (var cmd-meta-test-2arity) {})
           lists (:arg-lists m)]
       (is (= [:item] (first lists)))
       (is (= [] (second lists))))))
+
+(deftest can-execute-test
+  (binding [*commands* (atom {})]
+    (defcmd
+      ^{:if-conscious? false
+        :time :machine}
+      user-meta-cmd
+      "Hey Doc"
+      [cli]
+      nil)
+    (testing "Include user-provided meta info in cmd meta"
+      (let [m (meta (get @*commands* "user-meta-cmd"))]
+        ; verify we still have the basic stuff:
+        (is (identity (:arg-lists m))) ; we verify the mechanics of this elsewhere
+        (is (= 5 (:column m)))
+        (is (= "Hey Doc" (:doc m)))
+        (is (= "rainboots/command_test.clj" (:file m)))
+        (is (number? (:line m)))
+        (is (= (symbol "user-meta-cmd") (:name m)))
+        (is (= (find-ns 'rainboots.command-test) (:ns m)))
+        ;
+        ; now, do we have our user stuff?
+        (is (false? (:if-conscious? m)))
+        (is (= :machine (:time m)))))))
 
 (deftest parameterized-argtype-test
   (testing "Parameterized argtype"
@@ -51,7 +75,7 @@
       "Test function"
       [cli ^{:item :in-storage} item ^{:eq :held} equip any]
       nil)
-    (let [m (cmd-meta (var cmd-meta-test-cmd-fn))
+    (let [m (cmd-meta (var cmd-meta-test-cmd-fn) {})
           args (first (:arg-lists m))]
       (is (= "cmd-meta-test-cmd-fn" (name (:name m))))
       (is (= "Test function" (:doc m)))
