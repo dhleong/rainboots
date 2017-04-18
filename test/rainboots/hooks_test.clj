@@ -21,6 +21,17 @@
       ;; now, nothing
       (is (= 1 (trigger! :inc 1))))))
 
+(deftest hook-dedup
+  (testing "Dedup hooks by name"
+    (hook! :math (fn my-math [arg] (inc arg)))
+    (hook! :math (fn my-math [arg] (dec arg)))
+    (is (= 1 (trigger! :math 2)))
+    (is (= 1 (count (installed-hooks :math))))
+    (is (= ["my-math"]
+           (map first (installed-hook-pairs :math))))
+    (unhook! :math (fn my-math [arg] (inc arg)))
+    (is (empty? (installed-hooks :math)))))
+
 (deftest ordered-hooks-test
   (testing "Install and insert one hook each"
     (let [after (fn [s]

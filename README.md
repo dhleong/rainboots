@@ -290,14 +290,17 @@ For example:
 
 ; magic-items.clj:
 (hook! :wear-item
-  (fn [{:keys [cli item] :as arg}]
+  ; Note the use of a named fn here: It's not
+  ; required, but your repl experience will be
+  ; better if you do.
+  (fn wear-magic-item [{:keys [cli item] :as arg}]
     (when-let [magic (:magic item)]
       (apply-magic! cli magic))
     arg))
 
 ; armor.clj:
 (hook! :wear-item
-  (fn [{:keys [cli item] :as arg}]
+  (fn wear-armor [{:keys [cli item] :as arg}]
     (when-let [armor (:armor item)]
       (apply-armor! cli armor))
     arg))
