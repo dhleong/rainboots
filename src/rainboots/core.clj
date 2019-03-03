@@ -28,23 +28,24 @@
 (declare telnet!)
 
 (defn throttle
-  "Read from ch until it closes, throttling reads such that
-  only the last value emitted without any others following
-  for `duration` ms will be accepted; read values will be
-  passed to f."
+  "Read from ch until it closes, throttling reads such that only the
+   last value emitted without any others following for `duration` ms
+   will be accepted; read values will be passed to f."
   [ch f duration]
-  (async/go-loop
-    [last-val nil]
+  (async/go-loop [last-val nil]
     (when last-val
       (<! (async/timeout duration)))
+
     (if-let [polled (async/poll! ch)]
       ; still more
       (recur polled)
+
       ; none yet!
       (do
         ; trigger on last-val
         (when last-val
           (f last-val))
+
         ; try to read; if it is nil, the channel was closed
         (when-let [v (<! ch)]
           (recur v))))))
@@ -53,7 +54,6 @@
   [svr stream]
   (let [{:keys [on-prompt prompt-delay]} @svr
         prompt-chan (chan (async/sliding-buffer 1))]
-    ;
     (when on-prompt
       (throttle
         prompt-chan
@@ -67,7 +67,7 @@
                      to-prompt
                      prompt))))
         prompt-delay))
-    ;
+
     {:stream stream
      :term-types #{}
      :input-stack (atom [])
@@ -84,26 +84,31 @@
 (defn- handle-telnet
   [cli pkt accepted-opts fallback]
   (cond
-    ;; the client can send term type! request it
+    ; the client can send term type! request it
     (= {:telnet :will
-        :opt :term-type} pkt)
+        :opt :term-type}
+       pkt)
     (telnet! cli {:telnet :term-type
                   :opt [:send]})
-    ;; the client is sending their term type
+
+    ; the client is sending their term type
     (= :term-type (:telnet pkt))
     (if-not (contains? (:term-types @cli) (:opt pkt))
       (do
-        ;; another new term type; keep requesting until
-        ;;  we know them all
+        ; another new term type; keep requesting until we know them all
         (swap! cli update :term-types conj (:opt pkt))
         (telnet! cli {:telnet :term-type :opt [:send]}))
-      ;; we've got 'em all; preprocess for color
+
+      ; we've got 'em all; preprocess for color
       (determine-colors cli))
+
+    ; handle other telopts
     (= :will (:telnet pkt))
     (if (contains? accepted-opts (:opt pkt))
       (telnet! cli {:telnet :do :opt (:opt pkt)})
       (telnet! cli {:telnet :wont :opt (:opt pkt)}))
-    ;; else, let the provided callback handle
+
+    ; else, let the provided callback handle
     :else
     (fallback cli pkt)))
 
@@ -118,25 +123,31 @@
         on-telnet (:on-telnet opts)
         on-disconnect (:on-disconnect opts)
         client (atom {})
-        wrapped
-        (wrap-stream
-          s
-          (fn [s pkt]
-            (with-binds
-              (if (string? pkt)
-                ;; string pkt...
-                (if (:ch @client)
-                  ;; logged in; use cmd handler
-                  (on-cmd client pkt)
-                  ;; need auth still
-                  (on-auth client pkt))
-                ;; simple; telnet pkt
-                (handle-telnet client pkt
-                               telnet-opts on-telnet)))))]
+
+        wrapped (wrap-stream
+                  s
+                  (fn [s pkt]
+                    (with-binds
+                      (cond
+                        ; simple; telnet pkt
+                        (not (string? pkt))
+                        (handle-telnet client pkt
+                                       telnet-opts on-telnet)
+
+                        ; logged in; use cmd handler
+                        (:ch @client)
+                        (on-cmd client pkt)
+
+                        ; otherwise, still need auth
+                        :else
+                        (on-auth client pkt)))))]
+
     (reset! client (make-client svr wrapped))
     (swap! (:connected @svr) conj client)
+
     (with-binds
       (on-connect client))
+
     (s/on-closed
       s
       (fn []
@@ -144,10 +155,12 @@
         (when-let [prompt-chan (:rainboots/prompt-chan @client)]
           ; stop prompting
           (async/close! prompt-chan))
+
         (with-binds
           (on-disconnect client))))
-    ;; request terminal type
-    ;; FIXME we should allow specifying more than :do
+
+    ; request terminal type
+    ; FIXME we should allow specifying more than :do
     (doseq [opt telnet-opts]
       (telnet! client {:telnet :do
                        :opt opt}))))
@@ -157,8 +170,7 @@
 ;;
 
 (defn- -start-server
-  "NB: You should use (start-server)
-  instead of using this directly."
+  "NB: You should use (start-server) instead of using this directly."
   [& {:keys [port
              on-auth on-cmd
              on-404
@@ -169,60 +181,57 @@
   {:pre [(not (nil? on-connect))
          (not (nil? on-cmd))
          (not (nil? on-auth))]}
+
   (let [obj (atom {:connected (atom #{})
                    :on-prompt on-prompt
                    :prompt-delay prompt-delay})
         svr (tcp/start-server
               (partial handler obj opts)
               opts)]
+
     (swap! obj assoc :closable svr)
-    ;; re-def dynamically so there's some
-    ;;  default value for use in REPL; handlers
-    ;;  should always get the correct instance
-    ;;  thanks to use of (binding) above (although
-    ;;  I'm not sure why you'd start more than one
-    ;;  server in the same JVM, anyway....)
+
+    ; re-def dynamically so there's some default value for use in REPL;
+    ; handlers should always get the correct instance thanks to use of
+    ; (binding) above (although I'm not sure why you'd start more than one
+    ; server in the same JVM, anyway....)
     (comms/redef-svr! obj)
-    ;; re-import
+
+    ; re-import
     (import-vars [rainboots.comms *svr*])
+
     obj))
 
 (defmacro start-server
-  "Start up a server with the provided
-  callbacks and options. This is a macro
-  so that you can supply function references
-  and still easily update them via repl.
+  "Start up a server with the provided callbacks and options. This is a
+   macro so that you can supply function references and still easily
+   update them via repl.
+
   Options:
   :port Port on which to start the server
-  :prompt-delay Milliseconds to wait after a send!
-               to trigger :on-prompt
-  :telnet-opts A set of handled telnet op codes.
-               will automatically specify 'WILL'
-               for these opts. May be keywords
-               specified in rainboots.proto, or
-               the raw int value. By default, we
-               will handle :term-type and fill out
-               a set in :term-types of the client map
+  :prompt-delay Milliseconds to wait after a send! to trigger :on-prompt
+  :telnet-opts A set of handled telnet op codes. Rainboots will
+               automatically specify 'WILL' for these opts. May be
+               keywords specified in rainboots.proto, or the raw int
+               value. By default, we will handle :term-type and fill
+               out a set in :term-types of the client map
+
   Callbacks:
-  :can-exec? (fn [cli cmd]) Called to check if `cli` is
-             allowed to execute `cmd`. Return truthy if yes,
-             else return falsy and notify the client why.
-             Only applies when using the default :on-cmd
-  :on-auth (fn [cli line]) Called on each
-           raw line of input from the client
-           until they have something in the
-           :ch field of the `cli` atom. This
-           should be where you store the
-           character info.
-  :on-cmd (fn [cli cmd]) Called on each command
-          input from an auth'd client.
-  :on-err (fn [cli e]) Called if a client-executed command
-          throw a Throwable; only applies when using the
-          default on-cmd
-  :on-prompt (fn [cli]) Called when it's time to show
-             the client a prompt. Return a string or
-             a sequence and it will be passed or (apply)'d
-             to (send!), respectively."
+  :can-exec? (fn [cli cmd]) Called to check if `cli` is allowed to
+             execute `cmd`. Return truthy if yes, else return falsy and
+             notify the client why. Only applies when using the default
+             :on-cmd
+  :on-auth (fn [cli line]) Called on each raw line of input from the
+           client until they have something in the :ch field of the
+           `cli` atom. This should be where you store the character
+           info.
+  :on-cmd (fn [cli cmd]) Called on each command input from an auth'd
+          client.
+  :on-err (fn [cli e]) Called if a client-executed command throw a
+          Throwable; only applies when using the default on-cmd
+  :on-prompt (fn [cli]) Called when it's time to show the client a
+             prompt. Return a string or a sequence and it will be
+             passed or (apply)'d to (send!), respectively."
   [& {:keys [port
              telnet-opts
              can-exec?
@@ -244,6 +253,7 @@
            prompt-delay default-prompt-delay
            on-telnet `(constantly nil)}
       :as opts}]
+
   ;; NB: this lets us call the private function
   ;;  even from a macro:
   (let [on-cmd (if on-cmd
@@ -277,50 +287,51 @@
   (s/close! (:stream @cli)))
 
 (defn telnet!
-  "Send a telnet map (like thsoe received in :on-telnet)
-  or a vector of raw bytes as a telnet instruction. Telnet
-  maps can also be sent using (send!) for convenience;
-  note, however, that send! appends an '\\r\\n' sequence
-  to whatever is passed, so if you ONLY want to send a
-  telnet sequence, this is the way to go."
+  "Send a telnet map (like thsoe received in :on-telnet) or a vector of
+   raw bytes as a telnet instruction. Telnet maps can also be sent
+   using (send!) for convenience; note, however, that send! appends an
+   '\\r\\n' sequence to whatever is passed, so if you ONLY want to send
+   a telnet sequence, this is the way to go."
   [cli telnet]
   (when-let [s (:stream @cli)]
     (cond
-      ;; raw bytes vector
+      ; raw bytes vector
       (and (vector? telnet)
            (= tn-iac (first telnet)))
       (s/put! s (byte-array telnet))
-      ;; improper telnet sequence
+
+      ; improper telnet sequence
       (vector? telnet)
       (throw (IllegalArgumentException.
                (str "Telnet byte sequences must start"
                     "with tn-iac constant")))
-      ;; it's a map; the protocol will handle it
+
+      ; it's a map; the protocol will handle it
       (map? telnet)
       (s/put! s telnet))
+
     (s/put! s "\r")))
 
 (defn push-cmds!
-  "Push a new cmdset to the top of the user's
-  input stack. Only function at the top of this
-  stack receives input. This is only meaningful
-  if you haven't provided your own on-cmd handler
-  (but why would you?).
-  The provided cmd-set can be anything declared
-  with (defcmdset), or, in fact, any function
-  that looks like (fn [on-404 can-exec? cli input]), where:
-  `on-404` is the function configured for when a command
-           doesn't exist;
-  `can-exec?` is a (fn [cli cmd]), where `cmd` is the
-              a fn created by defcmd that `cli` is hoping
-              to execute.
+  "Push a new cmdset to the top of the user's input stack. Only
+   function at the top of this stack receives input. This is only
+   meaningful if you haven't provided your own on-cmd handler (but why
+   would you?).  The provided cmd-set can be anything declared with
+   (defcmdset), or, in fact, any function that looks like (fn [on-404
+   can-exec? cli input]), where:
+
+  `on-404` is the function configured for when a command doesn't exist;
+
+  `can-exec?` is a (fn [cli cmd]), where `cmd` is the a fn created by
+   defcmd that `cli` is hoping to execute.
+
   `cli` is the client providing the input; and
+
   `input` is the raw String input line"
   [cli cmd-set]
   (swap! (:input-stack @cli) conj cmd-set))
 
 (defn pop-cmds!
-  "Pop the top-most cmdset from the user's
-  input stack. See push-cmds!"
+  "Pop the top-most cmdset from the user's input stack. See push-cmds!"
   [cli]
   (swap! (:input-stack @cli) pop))

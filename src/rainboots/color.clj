@@ -88,9 +88,9 @@
       (swap! cli assoc :colors :ansi))))
 
 (defn process-colors
-  "Given a string, replace color sequences
-  with the appropriate ansi. We use the
-  sequence `{X` for colors, where X is one of:
+  "Given a string, replace color sequences with the appropriate ansi.
+   We use the sequence `{X` for colors, where X is one of:
+
     - n = Reset color
     - d = Dark (black) color
     - r = Red
@@ -100,11 +100,11 @@
     - p = Purple (magenta)
     - c = Cyan
     - w = White
-  To get the brighter variant of a color, use
-  the capital letter (eg {R for bright red, {W
-  for pure white, etc). If you want a literal
-  `{` character followed by one of the above
-  letters, simply repeat the `{`, like `{{Woo}`."
+
+  To get the brighter variant of a color, use the capital letter (eg {R
+   for bright red, {W for pure white, etc). If you want a literal `{`
+   character followed by one of the above letters, simply repeat the
+   `{`, like `{{Woo}`."
   [input]
   (string/replace
     input
@@ -115,10 +115,9 @@
          (apply ansi2 (get color-sequences arg))))))
 
 (defn strip-colors
-  "Given a string, strip out color sequences.
-  This should be used for clients that don't
-  support ansi. See `process-colors` for 
-  color sequences"
+  "Given a string, strip out color sequences. This should be used for
+   clients that don't support ansi. See `process-colors` for color
+   sequences"
   [input]
   (string/replace
     input

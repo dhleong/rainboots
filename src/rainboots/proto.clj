@@ -75,7 +75,7 @@
   [buf-seq expect]
   (loop [i 0
          b (seq buf-seq)]
-    (when-not (empty? b) 
+    (when-not (empty? b)
       (if-let [idx (index-of-buffer (first b) expect)]
         (+ i idx)
         (recur (+ i (.remaining (first b)))
@@ -97,8 +97,8 @@
 (defn- has-opt?
   [tn-code]
   (case tn-code
-    ;; these are will/wont/do/dont:
-    ;; this gives us constant lookup
+    ; these are will/wont/do/dont:
+    ; this gives us constant lookup
     (251 252 253 254) true
     false))
 
@@ -107,19 +107,20 @@
   (= tn-sb tn-code))
 
 (defn read-telnet-code
-  "Given a sequence of bytes, attempt to find a telnet
-  escape command sequence. If we found what might be an
-  incomplete sequence, returns :-incomplete. If we found
-  a complete sequence, returns a map with the decoded
-  telnet sequence in :telnet, and the byte sequence before
-  and after it in :before and :after, respectively"
+  "Given a sequence of bytes, attempt to find a telnet escape command
+   sequence.  If we found what might be an incomplete sequence, returns
+   :-incomplete. If we found a complete sequence, returns a map with
+   the decoded telnet sequence in :telnet, and the byte sequence before
+   and after it in :before and :after, respectively"
   [buf-seq]
   (when-let [iac-idx (index-of buf-seq tn-iac)]
     (let [code-idx (inc iac-idx)
           opt-idx (inc code-idx)
           buf-count (byte-count buf-seq)]
+
       (if (<= buf-count code-idx)
         :-incomplete
+
         (let [code (nth-byte buf-seq code-idx)
               has-opt? (has-opt? code)
               has-sub? (has-sub? code)
@@ -127,22 +128,26 @@
               ;;  is proceeded by tn-iac
               sub-end (when has-sub?
                         (index-of buf-seq tn-se))]
+
           (when-not (= tn-iac code)
             (cond
               (and has-opt?
                    (<= buf-count opt-idx))
               :-incomplete
+
               (and has-sub?
                    (nil? sub-end))
               :-incomplete
-              ;; has an option, and not incomplete
+
+              ; has an option, and not incomplete
               has-opt?
               (let [opt-byte (nth-byte buf-seq opt-idx)]
                 {:telnet (get tn-codes code code)
                  :opt (get tn-codes opt-byte opt-byte)
                  :before (take-bytes buf-seq iac-idx)
                  :after (drop-bytes buf-seq (inc opt-idx))})
-              ;; has a subnegotiation, and not incomplete
+
+              ; has a subnegotiation, and not incomplete
               has-sub?
               {:telnet (get tn-codes
                             (nth-byte buf-seq opt-idx)
@@ -159,17 +164,18 @@
                         buf->string)
                :before (take-bytes buf-seq iac-idx)
                :after (drop-bytes buf-seq (inc sub-end))}
-              ;; simple
+
+              ; simple
               :else
               {:telnet (get tn-codes code code)
                :before (take-bytes buf-seq iac-idx)
                :after (drop-bytes buf-seq opt-idx)})))))))
 
 (defn split-line
-  "Given a sequence of non-telnet-escape bytes, if there is a
-  \n character, return a tuple of [string, remaining], where
-  `string` is the string value of the input, and `remaining`
-  is the remaining sequence of bytes."
+  "Given a sequence of non-telnet-escape bytes, if there is a \n
+   character, return a tuple of [string, remaining], where `string` is
+   the string value of the input, and `remaining` is the remaining
+   sequence of bytes."
   [buf-seq]
   (when-let [new-line (index-of buf-seq (int \newline))]
     [(.trim (buf->string (take-bytes buf-seq new-line)))
@@ -190,6 +196,7 @@
           ; there was a telnet code, but it's incomplete
           (= :-incomplete telnet-code)
           [false this buf-seq]
+
           ; there was a full telnet code!
           (map? telnet-code)
           [true
@@ -197,7 +204,8 @@
            (concat-buf-seqs
              (:before telnet-code)
              (:after telnet-code))]
-          ;; just string. see if there's a newline
+
+          ; just string. see if there's a newline
           :else
           (if-let [[result remain] (split-line buf-seq)]
             [true result remain]
@@ -220,28 +228,32 @@
   (let [kind (get tn-keys (:telnet m) (:telnet m))
         opt (get tn-keys (:opt m) (:opt m))]
     (cond
-      ;; no :telnet key; must be, eg: {:will :term-type}
+      ; no :telnet key; must be, eg: {:will :term-type}
       (not kind)
       ;; TODO support this
       (throw (IllegalArgumentException.
                (str "Invalid telnet map: " m)))
-      ;; simple
+
+      ; simple
       (nil? opt)
       (->bytes tn-iac kind)
-      ;; subnegotiation
+
+      ; subnegotiation
       (or (string? opt)
           (vector? opt))
       (->bytes tn-iac tn-sb kind opt tn-iac tn-se)
-      ;; simple option
+
+      ; simple option
       :else
       (->bytes tn-iac kind opt))))
 
 (defn encode-packet
   [pkt]
   (if (map? pkt)
-    ;; encode to a byte array
+    ; encode to a byte array
     (map->pkt pkt)
-    ;; just let it be
+
+    ; just let it be
     pkt))
 
 (defn wrap-stream
@@ -250,6 +262,7 @@
     (s/connect
       (s/map encode-packet out)
       s)
+
     (let [spliced
           (s/splice
             out
@@ -257,4 +270,5 @@
       (s/consume
         #(on-packet s %)
         spliced)
+
       spliced)))
