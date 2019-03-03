@@ -7,6 +7,27 @@
     (is (= ["l" "lo" "loo" "look"]
            (build-up "look")))))
 
+(deftest abbrev-test
+  (testing "default uses build-up"
+    (binding [*commands* (atom {})]
+      (defcmd every [cli] nil)
+
+      (is (= ["e" "ev" "eve" "ever" "every"]
+             (keys @*commands*)))))
+
+  (testing ":no-abbrev"
+    (binding [*commands* (atom {})]
+      (defcmd ^:no-abbrev onlyfull [cli] nil)
+
+      (is (= ["onlyfull"] (keys @*commands*)))))
+
+  (testing ":abbrev"
+    (binding [*commands* (atom {})]
+      (defcmd ^{:abbrev ["s" "specific"]} specific [cli] nil)
+
+      (is (= ["s" "specific"] (keys @*commands*)))))
+  )
+
 (deftest cmdset-test
   (let [returned (atom nil)]
     (binding [*commands* (atom {})]

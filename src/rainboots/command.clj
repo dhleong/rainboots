@@ -69,16 +69,18 @@
          (apply exec-command args#)))))
 
 (defmacro defcmd
-  "Declare a command that can be invoked
-  from the default on-cmd handler. The
-  syntax is similar to (defn), including support
-  for multi-arity. Note, however, that same-arity
-  with different argtypes is NOT supported.
-  The cmd-name may be annotated with ^:no-abbrv 
-  if the command may only be executed by inputting
-  the full name; otherwise, abbreviations
-  will be generated starting from the first
-  letter, then the first two letters, and so on."
+  "Declare a command that can be invoked from the default on-cmd handler. The
+   syntax is similar to (defn), including support for multi-arity. Note,
+   however, that same-arity with different argtypes is NOT supported.
+
+   The cmd-name may be annotated with ^:no-abbrev if the command may only be
+   executed by inputting the full name; otherwise, abbreviations will be
+   generated starting from the first letter, then the first two letters, and so
+   on.
+
+   Alternatively, you may annotate with eg `^{:abbrev [\"w\" \"west\"]}` to
+   explicitly declare what invocations may be used. Here, you *must* include
+   the full name; rainboots will not generate *any* abbreviations."
   [cmd-name & decl]
   (let [has-doc? (string? (first decl))
         doc (if has-doc?
@@ -88,13 +90,15 @@
                (next decl)
                decl)
         user-meta (meta cmd-name) ; any user-provided meta info
-        no-abbrv? (:no-abbrv user-meta)
+        no-abbrev? (:no-abbrev user-meta)
+        user-invocations (:abbrev user-meta)
         fn-name (str cmd-name) ;; let's just use it directly
         fn-var (symbol fn-name)
         invoke (str cmd-name)
-        invocations (if no-abbrv?
-                      [invoke]
-                      (build-up invoke))]
+        invocations (cond
+                      user-invocations user-invocations
+                      no-abbrev? [invoke]
+                      :else (build-up invoke))]
     `(let [defd-fn# (defn ~fn-var
                       ~doc
                       ~@body)
