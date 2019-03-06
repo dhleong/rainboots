@@ -15,11 +15,9 @@
    Automatically strips color codes if the client has declared it
    doesn't support them."
   [{:keys [cli text] :as arg}]
-  (assoc arg
-         :text
-         (if (:colors @cli)
-           (process-colors text)
-           (strip-colors text))))
+  (update arg :text (if (:colors @cli)
+                      process-colors
+                      strip-colors)))
 
 (hook! :process-send! default-colorize-hook)
 

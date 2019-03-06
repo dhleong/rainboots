@@ -268,17 +268,18 @@ set using, you guessed it:
 Any `defcmd`s inside a `defcmdset` will be bound to that set, and only visible after
 a call to `(push-cmds! cli combat-commands)`. 
 
-In fact, a cmdset is just a function, which looks like `(fn [on-404 cli input])`. 
-`on-404` is the registered "unknown command" function installed on the server,
-and the rest is as you expect. So, if you want full control over the input and
-don't wish to use `defcmd` or `defcmdset`, you can just `(push-cmds!)` your own function!
+In fact, a cmdset is just a function, which looks like `(fn [on-404 cli
+input])`. `on-404` is the registered "unknown command" function installed on
+the server, and the rest is as you expect. So, if you want full control over
+the input and don't wish to use `defcmd` or `defcmdset`, you can just
+`(push-cmds!)` your own function!
 
 ### Hooks
 
-Hooks allow you to provide information throughout the system without having
-any direct dependencies. For example, you might have a hook for "wearing" an
-item. There might be different types of effects associated with an item, such
-as armor points, or magical properties. You could store these properties as
+Hooks allow you to provide information throughout the system without having any
+direct dependencies. For example, you might have a hook for "wearing" an item.
+There might be different types of effects associated with an item, such as
+armor points, or magical properties. You could store these properties as
 keywords on the item, and apply them by *hooking into* the "wear" event.
 
 For example:
@@ -317,6 +318,65 @@ For example:
     ;;  to indicate that the item couldn't be worn;
     ;;  the semantics of each hook is up to you!
     (add-equip! cli item))
+```
+
+#### Hook ordering
+
+By default, the order in which hooks are triggered is undefined, since
+the order in which they are added depends on when you load the
+namespace they're declared in, but you can provide a specific priority
+if you need to make sure that some hook is executed before another:
+
+```clojure
+(hook! :wear-item
+  {:priority 10}
+  (fn wear-magic-item [{:keys [cli item] :as arg}]
+    ; etc
+    )
+```
+
+If unspecified, a hook's priority will be `0`. Higher-priority hooks
+will be executed before lower-priority hooks.
+
+#### Stopping early
+
+If the semantics of your hook are that not every registered hook fn
+needs to see the input, you may wrap the returned value with `reduced`
+to indicate that the given value **is** the *result*, and that no other
+hook fn needs to run:
+
+```clojure
+(hook! :wear-item
+  {:priority 10}
+  (fn prevent-wearing-unwearables [{:keys [cli item] :as arg}]
+    (if (wearable? item)
+      arg ; proceed
+
+      (do
+        (send! cli "You can't wear that!")
+        (reduced {})))))
+```
+
+#### Default hooks
+
+Sometimes you want to provide a "fallback" hook that only gets called
+when nobody else was interested. Rainboots has a couple options here:
+
+- `:when-only`  With this option, the hook fn will *only* be called if
+  no other fn is registered for this hook.
+- `:when-no-result`  With this option, the hook fn will *only* be
+  called if no other fn has produced a *result* (see above).
+
+If you're only providing one of these options and not priority (they
+are essentially mutually exclusive, so this should be the normal case)
+you can use a set instead of a map, for example:
+
+```clojure
+(hook! :perform-action
+  #{:when-no-result}
+  (fn default-perform-action [arg]
+    ; etc
+    ))
 ```
 
 #### Builtin hooks

@@ -4,34 +4,64 @@
 
 (def ^:private hooks (atom {}))
 
-(defn do-hook!
-  [hook-name fn-name fun]
+(defn- try-hook [hook-name hook-type options fun]
   (swap! hooks
-         update hook-name
-         (fn [hook-list]
-           (vec
-             (conj
-               (remove (comp (partial = fn-name) first)
-                       hook-list)
-               [fn-name fun])))))
+         update-in
+         [hook-name hook-type]
+         (fn [existing]
+           (if existing
+             (throw (IllegalArgumentException.
+                      (str "Overriding existing " hook-type " for " hook-name)))
+             {:f fun
+              :opts options}))))
 
-(defn do-insert-hook!
-  "Insert a fn as the first to be called for the given hook, before any
-   already-registered hooks. See hook!"
-  [hook-name fn-name fun]
-  (swap! hooks
-         update hook-name
-         (fn [hook-list]
-           (let [hook-list (when hook-list
-                             (remove (comp (partial = fn-name) first)
-                                     hook-list))]
-             (concat hook-list [[fn-name fun]])))))
+(defn- hook-fn->sort-key [hook-obj]
+  (or (->> hook-obj :opts :priority) 0))
+
+(def ^:private descending #(compare %2 %1))
+
+(defn do-hook!
+  [hook-name fn-name options fun]
+  (cond
+    (:when-only options) (try-hook hook-name :when-only options fun)
+    (:when-no-result options) (try-hook hook-name :when-no-result options fun)
+
+    :else (swap! hooks
+                 update-in
+                 [hook-name :list]
+                 (fn [hook-list]
+                   (->> hook-list
+
+                        ; remove any existing copies of this fn (by name)
+                        (remove (comp (partial = fn-name) :name))
+
+                        ; add the fn
+                        (concat [{:f fun
+                                  :opts options
+                                  :name fn-name}])
+
+                        ; sort by priority
+                        (sort-by hook-fn->sort-key descending))))))
+
+(defn- remove-matching [fn-name fun old]
+  (when (not= fun (:f old))
+    old))
 
 (defn do-unhook!
-  [hook-name fn-name]
-  (swap! hooks update hook-name (partial remove
-                                         (comp (partial = fn-name)
-                                               first))))
+  [hook-name fn-name fun]
+  (let [remove-fn (partial remove-matching fn-name fun)]
+    (swap! hooks
+           update
+           hook-name
+           (fn [hook]
+             (-> hook
+                 (update :when-no-result remove-fn)
+                 (update :when-only remove-fn)
+
+                 (update :list
+                         (partial remove
+                                  (comp (partial = fn-name)
+                                        :name))))))))
 
 (defn- nameof [fun]
   (cond
@@ -62,26 +92,66 @@
 
   The name of a hook is similarly arbitrary---it may be a String or a
    Keyword or whatever you want, as long as you use it consistently."
-  [hook-name fun]
-  (let [fn-name (nameof fun)]
-    `(do-hook! ~hook-name ~fn-name ~fun)))
+  ([hook-name fun] `(hook! ~hook-name nil ~fun))
+  ([hook-name options fun]
+   (let [fn-name (nameof fun)]
+     `(do-hook! ~hook-name ~fn-name ~options ~fun))))
 
 (defmacro insert-hook!
-  "Insert a fn as the first to be called for the given hook, before any
+  "DEPRECATED: use `(hook!)` with a priority.
+
+   Insert a fn as the first to be called for the given hook, before any
    already-registered hooks. See hook!"
   [hook-name fun]
-  (let [fn-name (nameof fun)]
-    `(do-insert-hook! ~hook-name ~fn-name ~fun)))
+  `(hook! ~hook-name {:priority Integer/MAX_VALUE} ~fun))
 
 (defn installed-hook-pairs
   "Get the list of [name, installed hook fn] names for the given hook"
   [hook-name]
-  (get @hooks hook-name))
+  (->> (get @hooks hook-name)
+       :list
+       (map (fn [{:keys [name f]}]
+              [name f]))))
 
 (defn installed-hooks
   "Get the list of installed hook funs for the given hook"
   [hook-name]
   (map second (installed-hook-pairs hook-name)))
+
+(defn- run-hook! [hook arg]
+  (if-let [installed (seq (:list hook))]
+    ; execute hooks
+    (let [returned (reduce (fn [v {hook-fn :f}]
+                             (let [new-v (hook-fn v)]
+                               (if (reduced? new-v)
+                                 ; reduced result? great. wrap it in a second
+                                 ; (reduced) so we know the returned value *was*
+                                 ; reduced
+                                 (reduced new-v)
+
+                                 ; just the value
+                                 new-v)))
+                           arg
+                           installed)]
+      (if (reduced? returned)
+        ; we have a result! return it
+        (unreduced returned)
+
+        ; :when-no-result on the last-returned value (if we have it)
+        (or (when-let [{hook-fn :f} (:when-no-result hook)]
+              (hook-fn returned))
+
+            ; otherwise, just use the returned value
+            returned)))
+
+    ; no installed hooks; perhaps there's a :when-only? or :when-no-result?
+    (if-let [{hook-fn :f} (or (:when-only hook)
+                              (:when-no-result hook))]
+      ; there is!
+      (hook-fn arg)
+
+      ; nope; return the input
+      arg)))
 
 (defn trigger!
   "Trigger a hook kind. hook-name should be a previously installed hook
@@ -90,13 +160,14 @@
    last-run hook fn, or the input arg itself if no hooks are
    installed."
   [hook-name arg]
-  (if-let [installed (get @hooks hook-name)]
-    (let [f (apply comp (map second installed))]
-      (f arg))
+  (if-let [hook (get @hooks hook-name)]
+    (run-hook! hook arg)
+
+    ; no hooks installed; return the input
     arg))
 
 (defmacro unhook!
   "Uninstall a previously installed hook fn"
   [hook-name fun]
   (let [fn-name (nameof fun)]
-    `(do-unhook! ~hook-name ~fn-name)))
+    `(do-unhook! ~hook-name ~fn-name ~fun)))
