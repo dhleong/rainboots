@@ -4,27 +4,29 @@
 
 ## What
 
-Rainboots is super barebones, providing some important core functionality
-without getting in the way of making any sort of MUD experience you can
-imagine. It aims to be flexible and extensible, so that any number of
-features can be plugged in and shared, but is unopinionated about the
-ultimate experience. Almost every aspect---from low-level input handling
-to user authentication---can be replaced and redesigned. 
+Rainboots is super barebones, providing some important core
+functionality without getting in the way of making any sort of MUD
+experience you can imagine. It aims to be flexible and extensible, so
+that any number of features can be plugged in and shared, but is
+unopinionated about the ultimate experience. Almost every aspect---from
+low-level input handling to user authentication---can be replaced and
+redesigned. 
 
-Rainboots doesn't even initially provide a room or navigation system, 
-or even any basic commands---though it does provide some excellent tools 
-for developing them!
+Rainboots doesn't even initially provide a room or navigation system,
+or even any basic commands---though it does provide some excellent
+tools for developing them!
 
-Rainboots is implemented in Clojure for flexibility and rapid development.
-New commands (or updated versions of existing commands!) can easily be 
-swapped in with a REPL on the fly, without needing to restart the server.
+Rainboots is implemented in Clojure for flexibility and rapid
+development.  New commands (or updated versions of existing commands!)
+can easily be swapped in with a REPL on the fly, without needing to
+restart the server.
 
 At its core, Rainboots is a fancy telnet server, capable of sending and
-receiving raw telnet signals, so if you want to make a telnet server for
-whatever reason, Rainboots can be used for that, as well. Some (but not all) 
-telnet commands will be parsed into a nice, friendly Keyword, but it will 
-fall back to the integer value for any it doesn't know---feel free to send
-a PR with any missing signals!
+receiving raw telnet signals, so if you want to make a telnet server
+for whatever reason, Rainboots can be used for that, as well. Some (but
+not all) telnet commands will be parsed into a nice, friendly Keyword,
+but it will fall back to the integer value for any it doesn't
+know---feel free to send a PR with any missing signals!
 
 ## How
 
@@ -43,7 +45,7 @@ some basic usage, which we will describe in more detail here:
 
 (defn start-sample
   []
-  (def svr 
+  (def svr
     ;; Handlers and configuration are provided via keyword args.
     ;; Rainboots provides some sane defaults, but there are a few
     ;;  handlers you must provide yourself
@@ -58,16 +60,17 @@ some basic usage, which we will describe in more detail here:
       :on-connect on-connect)))
 ```
 
-That's it! Your basic MUD server is running. Before any commands can be accepted,
-however, you'll need to implement that `on-auth` handler.
+That's it! Your basic MUD server is running. Before any commands can be
+accepted, however, you'll need to implement that `on-auth` handler.
 
 ### Client Objects
 
-Before we talk about auth, let's learn about client objects. A client object is 
-simply a clojure map wrapped in an [atom](http://clojure.org/reference/atoms).
-There are a few "reserved" keywords (enumerated below) which you should not overwrite 
-(rainboots won't stop you; do so at your own peril!), but otherwise feel free
-to store any transient data in the client object/atom.
+Before we talk about auth, let's learn about client objects. A client
+object is simply a clojure map wrapped in an
+[atom](http://clojure.org/reference/atoms).  There are a few "reserved"
+keywords (enumerated below) which you should not overwrite (rainboots
+won't stop you; do so at your own peril!), but otherwise feel free to
+store any transient data in the client object/atom.
 
 "Reserved" keywords:
 
@@ -75,14 +78,16 @@ to store any transient data in the client object/atom.
 - `:ch` holds your character data, once auth'd
 - `:input-stack` is used by the default command handler for command sets
 
-Character data management and formatting is totally up to you. You may want to put
-another `atom` there for more easy swapping, but rainboots doesn't care. As long as
-there is *some* non-`nil` value stored in `:ch`, it will assume you are logged in.
+Character data management and formatting is totally up to you. You may
+want to put another `atom` there for more easy swapping, but rainboots
+doesn't care. As long as there is *some* non-`nil` value stored in
+`:ch`, it will assume you are logged in.
 
 ### Basic Auth
 
-Now that we know what a client object is (typically abbreviated `cli` in handlers),
-let's look at how to implement auth. Here is a minimal example:
+Now that we know what a client object is (typically abbreviated `cli`
+in handlers), let's look at how to implement auth. Here is a minimal
+example:
 
 ```clojure
 (defn on-auth
@@ -91,18 +96,20 @@ let's look at how to implement auth. Here is a minimal example:
   (send! cli "Welcome back, " username "!")
 ```
 
-This will be a very simple MUD, with no stats or attributes storable in the user,
-but rainboots doesn't mind. As stated above, so long as `:ch` is non-`nil`, the user 
-is "logged in," and the `on-cmd` handler will be called (see below) instead of `on-auth`. 
+This will be a very simple MUD, with no stats or attributes storable in
+the user, but rainboots doesn't mind. As stated above, so long as `:ch`
+is non-`nil`, the user is "logged in," and the `on-cmd` handler will be
+called (see below) instead of `on-auth`. 
 
-A more interesting `on-auth` will probably want to use the client atom as temporary
-storage for checking credentials. Here's a more complete example, where each character 
-has their own username and password. Persistence is left to the user.
+A more interesting `on-auth` will probably want to use the client atom
+as temporary storage for checking credentials. Here's a more complete
+example, where each character has their own username and password.
+Persistence is left to the user.
 
 ```clojure
 (defn on-auth
   [cli line]
-  (if-let [u (:user @cli)] 
+  (if-let [u (:user @cli)]
     ;; they've already provided a username
     (do
       ;; probably load the character by username from a db or flat file,
@@ -121,17 +128,18 @@ has their own username and password. Persistence is left to the user.
       (send! cli "Password:"))))
 ```
 
-Because `on-auth` is plug-and-play, you can implement it however you like. You
-could have a single login with multiple characters, or even support two-factor auth!
-The sky is the limit.
+Because `on-auth` is plug-and-play, you can implement it however you
+like. You could have a single login with multiple characters, or even
+support two-factor auth!  The sky is the limit.
 
 ### Command Handling
 
-Rainboots comes with a pretty powerful `on-cmd` handler installed by default.
-You should rarely need to replace the default `on-cmd` handler, but you are more
-than welcome to. As with `on-auth`, the `on-cmd` handler is called with a client
-object, and a line of input. Since there are many ways to handle commands, and most
-of them annoying to manage, rainboots provides a convenient way to get started:
+Rainboots comes with a pretty powerful `on-cmd` handler installed by
+default.  You should rarely need to replace the default `on-cmd`
+handler, but you are more than welcome to. As with `on-auth`, the
+`on-cmd` handler is called with a client object, and a line of input.
+Since there are many ways to handle commands, and most of them annoying
+to manage, rainboots provides a convenient way to get started:
 
 ```clojure
 (defcmd broadcast
@@ -140,29 +148,32 @@ of them annoying to manage, rainboots provides a convenient way to get started:
   (send-all! (-> @cli :ch :name) " broadcasts: " text))
 ```
 
-This demonstrates a couple things. First, the `(defcmd)` macro, which installs a
-command into the default set with a familiar syntax, and "argument types." Any
-logged-in user will be able to type `broadcast Hi!` to greet the whole mud. In
-fact, we automatically build out shortcuts, so with no other commands def'd, you
-could just type `b Hi!`. The `:rest` argument type that annotates the `text`
-argument  to get the entire rest of the input does not come with rainboots,
-but would be easy enough to implement. See below for more on "argument types."
+This demonstrates a couple things. First, the `(defcmd)` macro, which
+installs a command into the default set with a familiar syntax, and
+"argument types." Any logged-in user will be able to type `broadcast
+Hi!` to greet the whole mud. In fact, we automatically build out
+shortcuts, so with no other commands def'd, you could just type `b
+Hi!`. The `:rest` argument type that annotates the `text` argument to
+get the entire rest of the input does not come with rainboots, but
+would be easy enough to implement. See below for more on "argument
+types."
 
-By default, user input is destructured into arguments based on whitespace. For
-example, imagine this command:
+By default, user input is destructured into arguments based on
+whitespace. For example, imagine this command:
 
 ```clojure
 (defcmd put
   "Put something somewhere"
   [cli what where]
-  ;; this part is up to you
+  ; this part is up to you!
   )
 ```
 
-A user-input line "put gun holster" will be automatically destructured for you.
+A user-input line "put gun holster" will be automatically destructured
+for you.
 
-Commands don't always follow a single format, however, so `defcmd` supports
-multi-arity out of the box:
+Commands don't always follow a single format, however, so `defcmd`
+supports multi-arity out of the box:
 
 ```clojure
 (defcmd look
@@ -173,14 +184,16 @@ multi-arity out of the box:
    (send! cli thing " isn't very interesting to look at")))
 ```
 
-To make this really convenient, however, you'll want to make some argument types.
+To make this really convenient, however, you'll want to make some
+argument types.
 
 #### Argument Types
 
-A powerful feature built into rainboots is the notion of "argument types." These
-are basically keyword annotations for command arguments which transform the user's
-input into the appropriate object, so commands can just declare what they expect,
-and rainboots can handle validating the user's input and providing the objects.
+A powerful feature built into rainboots is the notion of "argument
+types." These are basically keyword annotations for command arguments
+which transform the user's input into the appropriate object, so
+commands can just declare what they expect, and rainboots can handle
+validating the user's input and providing the objects.
 
 Here's how to implement that `^:rest` type shown above:
 
@@ -193,15 +206,17 @@ Here's how to implement that `^:rest` type shown above:
 
 What? That's it!?
 
-`defargtype` installs the argument type handler globally, and also uses `(defn)`-like
-syntax. Every handler MUST return a vector, whose first item is the resulting object,
-and whose second item is the remaining part of the input to parse. Handlers are provided
-a client object and the remaining input line at that point. This lets you do fancy things
+`defargtype` installs the argument type handler globally, and also uses
+`(defn)`-like syntax. Every handler MUST return a vector, whose first
+item is the resulting object, and whose second item is the remaining
+part of the input to parse. Handlers are provided a client object and
+the remaining input line at that point. This lets you do fancy things
 like supporting "sword in stone" as a single `^:item` argument.
 
-For more specificity per-command, you may use the map annotation style to provide a parameter
-to your argtype. For example, you could annotate a param as `^{:item :on-ground}` if you only
-want the item if it is on the ground. The argtype def should then look something like:
+For more specificity per-command, you may use the map annotation style
+to provide a parameter to your argtype. For example, you could annotate
+a param as `^{:item :on-ground}` if you only want the item if it is on
+the ground. The argtype def should then look something like:
 
 ```clojure
 (defargtype :item
@@ -214,10 +229,11 @@ want the item if it is on the ground. The argtype def should then look something
     ))
 ```
 
-Argtypes may not always "work," however. Even if the user provided parse-able input,
-it might be invalid. Having to handle that everywhere you use an argtype is problematic,
-so you may return a `Throwable` instead of a value. If any argument is parsed to a
-`Throwable`, the message in the first `Throwable` found will be sent to the user, and
+Argtypes may not always "work," however. Even if the user provided
+parse-able input, it might be invalid. Having to handle that everywhere
+you use an argtype is problematic, so you may return a `Throwable`
+instead of a value. If any argument is parsed to a `Throwable`, the
+message in the first `Throwable` found will be sent to the user, and
 your command handler will not be called. For example:
 
 ```clojure
@@ -231,12 +247,14 @@ your command handler will not be called. For example:
     [(Exception. (str "I don't see any " input)), etc]))
 ```
 
-Sometimes, you might want an argtype that isn't directly supplied by the user's input, for
-example if you have combat commands that require a previously-specified target. Using an argtype
-is a convenient way to access this, and have the logic to verify the existence of that target
-be unified in a single place. For such an argtype, the input is generally not necessary, so
-you can mark it as `:nilable`, meaning that it's okay if it's `nil`—normally, an argtype is
-only called if there's some input left to handle. For example:
+Sometimes, you might want an argtype that isn't directly supplied by
+the user's input, for example if you have combat commands that require
+a previously-specified target. Using an argtype is a convenient way to
+access this, and have the logic to verify the existence of that target
+be unified in a single place. For such an argtype, the input is
+generally not necessary, so you can mark it as `:nilable`, meaning that
+it's okay if it's `nil`—normally, an argtype is only called if there's
+some input left to handle. For example:
 
 ```clojure
 (defargtype :target
@@ -251,12 +269,13 @@ only called if there's some input left to handle. For example:
 
 ### Command sets
 
-Normally, all commands are added to a default "command set." Sometimes, however,
-you may wish to put the user into a special mode where they have access to only
-specific commands. You can do this via `(push-cmds!)` and `(pop-cmds!)`. 
+Normally, all commands are added to a default "command set." Sometimes,
+however, you may wish to put the user into a special mode where they
+have access to only specific commands. You can do this via
+`(push-cmds!)` and `(pop-cmds!)`. 
 
-`(push-cmds!)` takes a client object, and the command set. You can define a command
-set using, you guessed it:
+`(push-cmds!)` takes a client object, and the command set. You can
+define a command set using, you guessed it:
 
 ```clojure
 (defcmdset combat-commands
@@ -265,22 +284,23 @@ set using, you guessed it:
     (send! cli "You swing a punch!")))
 ```
 
-Any `defcmd`s inside a `defcmdset` will be bound to that set, and only visible after
-a call to `(push-cmds! cli combat-commands)`. 
+Any `defcmd`s inside a `defcmdset` will be bound to that set, and only
+visible after a call to `(push-cmds! cli combat-commands)`.
 
 In fact, a cmdset is just a function, which looks like `(fn [on-404 cli
-input])`. `on-404` is the registered "unknown command" function installed on
-the server, and the rest is as you expect. So, if you want full control over
-the input and don't wish to use `defcmd` or `defcmdset`, you can just
-`(push-cmds!)` your own function!
+input])`. `on-404` is the registered "unknown command" function
+installed on the server, and the rest is as you expect. So, if you want
+full control over the input and don't wish to use `defcmd` or
+`defcmdset`, you can just `(push-cmds!)` your own function!
 
 ### Hooks
 
-Hooks allow you to provide information throughout the system without having any
-direct dependencies. For example, you might have a hook for "wearing" an item.
-There might be different types of effects associated with an item, such as
-armor points, or magical properties. You could store these properties as
-keywords on the item, and apply them by *hooking into* the "wear" event.
+Hooks allow you to provide information throughout the system without
+having any direct dependencies. For example, you might have a hook for
+"wearing" an item.  There might be different types of effects
+associated with an item, such as armor points, or magical properties.
+You could store these properties as keywords on the item, and apply
+them by *hooking into* the "wear" event.
 
 For example:
 
@@ -405,7 +425,7 @@ Symbol | Color   | Symbol | Color
 `{c`   | ![Cyan](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/43c72287b5a987b545b2a81480767527b4d8dab1/ansi-d-cyan.svg)    | `{C`   | ![Bright-cyan](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/2a2b5b6583abe9e60e1eaed141fc585d4db74095/ansi-b-cyan.svg)
 `{w`   | ![Gray](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/43c72287b5a987b545b2a81480767527b4d8dab1/ansi-d-white.svg)    | `{W`   | ![White](https://cdn.rawgit.com/dhleong/cd96df9cb4c58e9db7d2f88fac4a3d29/raw/2a2b5b6583abe9e60e1eaed141fc585d4db74095/ansi-b-white.svg)
 `{n`   | (Reset) | |
-  
+
 ## License
 
 Copyright © 2016-2019 Daniel Leong
