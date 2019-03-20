@@ -25,6 +25,14 @@
    send-if!
    send-all!])
 
+;; other imports to sort of hide the public util methods unless you
+;; know what you're doing
+(import-vars
+  [rainboots.hooks
+   hook!
+   unhook!
+   trigger!])
+
 (declare telnet!)
 
 (defn throttle
