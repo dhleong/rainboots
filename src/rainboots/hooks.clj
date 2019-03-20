@@ -1,18 +1,25 @@
 (ns ^{:author "Daniel Leong"
       :doc "Global hooks system"}
-  rainboots.hooks)
+  rainboots.hooks
+  (:require [clojure.string :as str]))
 
-(def ^:private hooks (atom {}))
+(def ^:dynamic *hooks* (atom {}))
 
-(defn- try-hook [hook-name hook-type options fun]
-  (swap! hooks
+(defn- try-hook [hook-name fn-name hook-type options fun]
+  (swap! *hooks*
          update-in
          [hook-name hook-type]
-         (fn [existing]
-           (if existing
+         (fn [{old-name :name :as existing}]
+           (if (and existing
+                    (or (nil? old-name)
+                        (not= fn-name old-name)))
              (throw (IllegalArgumentException.
-                      (str "Overriding existing " hook-type " for " hook-name)))
+                      (str "Overriding existing " hook-type
+                           " for " hook-name
+                           " (fn: `" fn-name "`)")))
+
              {:f fun
+              :name fn-name
               :opts options}))))
 
 (defn- hook-fn->sort-key [hook-obj]
@@ -23,10 +30,10 @@
 (defn do-hook!
   [hook-name fn-name options fun]
   (cond
-    (:when-only options) (try-hook hook-name :when-only options fun)
-    (:when-no-result options) (try-hook hook-name :when-no-result options fun)
+    (:when-only options) (try-hook hook-name fn-name :when-only options fun)
+    (:when-no-result options) (try-hook hook-name fn-name :when-no-result options fun)
 
-    :else (swap! hooks
+    :else (swap! *hooks*
                  update-in
                  [hook-name :list]
                  (fn [hook-list]
@@ -50,7 +57,7 @@
 (defn do-unhook!
   [hook-name fn-name fun]
   (let [remove-fn (partial remove-matching fn-name fun)]
-    (swap! hooks
+    (swap! *hooks*
            update
            hook-name
            (fn [hook]
@@ -62,6 +69,23 @@
                          (partial remove
                                   (comp (partial = fn-name)
                                         :name))))))))
+
+(defn clean-fn-name [fn-var]
+  (let [n (str fn-var)
+        first-dollar (str/index-of n "$")
+        last-dollar (str/last-index-of n "$")
+        name-end (str/last-index-of n "__")]
+    (if (and first-dollar
+             last-dollar
+             name-end)
+      (let [fn-ns (subs n 0 first-dollar)
+            the-name (subs n (inc last-dollar) name-end)]
+        (str fn-ns "/" the-name))
+
+      (when-let [instance-idx (str/index-of n "@")]
+        (-> n
+            (subs 0 instance-idx)
+            (str/replace "$" "/"))))))
 
 (defn- nameof [fun]
   (cond
@@ -77,7 +101,8 @@
     ; if a symbol, since this is called from a macro
     ; toString should get the resolved name (if any)
     ; for namespace-safe dedup'ing
-    (symbol? fun) (str fun)
+    (symbol? fun) `(or (clean-fn-name ~fun)
+                       ~(str fun))
 
     ; else, just fallback; this is probably about
     ; the same as the old behavior, and is not recommended
@@ -108,7 +133,7 @@
 (defn installed-hook-pairs
   "Get the list of [name, installed hook fn] names for the given hook"
   [hook-name]
-  (->> (get @hooks hook-name)
+  (->> (get @*hooks* hook-name)
        :list
        (map (fn [{:keys [name f]}]
               [name f]))))
@@ -160,7 +185,7 @@
    last-run hook fn, or the input arg itself if no hooks are
    installed."
   [hook-name arg]
-  (if-let [hook (get @hooks hook-name)]
+  (if-let [hook (get @*hooks* hook-name)]
     (run-hook! hook arg)
 
     ; no hooks installed; return the input
@@ -171,3 +196,8 @@
   [hook-name fun]
   (let [fn-name (nameof fun)]
     `(do-unhook! ~hook-name ~fn-name ~fun)))
+
+(defmacro with-hooks-context
+  [& body]
+  `(binding [*hooks* (atom {})]
+     ~@body))
