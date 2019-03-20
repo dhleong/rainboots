@@ -4,7 +4,6 @@
             [rainboots
              [core :refer :all]
              [color :refer [ansi-esc]]
-             [hooks :refer [hook! unhook!]]
              [proto :refer :all]]))
 
 (deftest cmds-stack-test
