@@ -1,4 +1,4 @@
-# rainboots [![Clojars Project](https://img.shields.io/clojars/v/rainboots.svg?style=flat)](https://clojars.org/rainboots) [![Build Status](http://img.shields.io/travis/dhleong/rainboots.svg?style=flat)](https://travis-ci.org/dhleong/rainboots) 
+# rainboots [![Clojars Project](https://img.shields.io/clojars/v/rainboots.svg?style=flat)](https://clojars.org/rainboots) [![Build Status](http://img.shields.io/travis/dhleong/rainboots.svg?style=flat)](https://travis-ci.org/dhleong/rainboots)
 
 *A more elegant way to make [MUD](https://en.wikipedia.org/wiki/MUD)*
 
@@ -10,7 +10,7 @@ experience you can imagine. It aims to be flexible and extensible, so
 that any number of features can be plugged in and shared, but is
 unopinionated about the ultimate experience. Almost every aspect---from
 low-level input handling to user authentication---can be replaced and
-redesigned. 
+redesigned.
 
 Rainboots doesn't even initially provide a room or navigation system,
 or even any basic commands---though it does provide some excellent
@@ -99,7 +99,7 @@ example:
 This will be a very simple MUD, with no stats or attributes storable in
 the user, but rainboots doesn't mind. As stated above, so long as `:ch`
 is non-`nil`, the user is "logged in," and the `on-cmd` handler will be
-called (see below) instead of `on-auth`. 
+called (see below) instead of `on-auth`.
 
 A more interesting `on-auth` will probably want to use the client atom
 as temporary storage for checking credentials. Here's a more complete
@@ -272,7 +272,7 @@ some input left to handle. For example:
 Normally, all commands are added to a default "command set." Sometimes,
 however, you may wish to put the user into a special mode where they
 have access to only specific commands. You can do this via
-`(push-cmds!)` and `(pop-cmds!)`. 
+`(push-cmds!)` and `(pop-cmds!)`.
 
 `(push-cmds!)` takes a client object, and the command set. You can
 define a command set using, you guessed it:
