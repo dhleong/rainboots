@@ -259,8 +259,7 @@
                      (send! cli# "{Y<< {RERROR: {WSomething went wrong. {Y>>{n"))
            on-disconnect `(constantly nil)
            prompt-delay default-prompt-delay
-           on-telnet `(constantly nil)}
-      :as opts}]
+           on-telnet `(constantly nil)}}]
 
   ;; NB: this lets us call the private function
   ;;  even from a macro:
@@ -292,7 +291,9 @@
 (defn close!
   "Disconnect the client"
   [cli]
-  (s/close! (:stream @cli)))
+  (swap! cli ::closed? true)
+  (when-let [s (:stream @cli)]
+    (s/close! s)))
 
 (defn telnet!
   "Send a telnet map (like thsoe received in :on-telnet) or a vector of
