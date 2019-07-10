@@ -134,7 +134,7 @@
 
         wrapped (wrap-stream
                   s
-                  (fn [s pkt]
+                  (fn [_ pkt]
                     (with-binds
                       (cond
                         ; simple; telnet pkt

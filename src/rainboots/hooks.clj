@@ -50,7 +50,7 @@
                         ; sort by priority
                         (sort-by hook-fn->sort-key descending))))))
 
-(defn- remove-matching [fn-name fun old]
+(defn- remove-matching [_fn-name fun old]
   (when (not= fun (:f old))
     old))
 

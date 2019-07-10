@@ -1,8 +1,7 @@
 (ns ^{:author "Daniel Leong"
       :doc "Command parsing"}
   rainboots.parse
-  (:require [clojure.string :refer [split] :as str]
-            [rainboots.comms :refer [send!]]))
+  (:require [rainboots.comms :refer [send!]]))
 
 (defn- strim
   "'Safe' trim; if input is nil, returns nil.  Otherwise, performs
@@ -50,7 +49,7 @@
               (recur (inc i)))))))))
 
 (defn default-argtype-handler
-  [cli input]
+  [_cli input]
   (let [input (strim input)
         [full-match value] (extract-word input)
         full-len (count full-match)
@@ -216,6 +215,7 @@
   (let [fn-name (str "argtype$" (name arg-type))
         fn-var (symbol fn-name)]
     `(let [argtype-fn# (defn ~fn-var
+                         ~doc
                          ~argv
                          ~@fn-body)]
        (swap! *arg-types*
