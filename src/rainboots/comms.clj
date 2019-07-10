@@ -107,9 +107,9 @@
   (fn [?process-extras pred & body]
     (when (bound? #'*svr*)
       (when-let [clients (some-> @*svr* :connected deref seq)]
-        (doseq [cli clients]
-          (when (pred cli)
-            (with-extras ?process-extras cli
+        (with-extras ?process-extras pred  ; this looks wrong, but it's correct
+          (doseq [cli clients]
+            (when (pred cli)
               (apply send! process-extras cli body))))))))
 
 (def
