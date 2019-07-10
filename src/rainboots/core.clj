@@ -126,7 +126,6 @@
   (let [on-connect (:on-connect opts)
         on-auth (:on-auth opts)
         on-cmd (:on-cmd opts)
-        on-404 (:on-404 opts)
         telnet-opts (:telnet-opts opts)
         on-telnet (:on-telnet opts)
         on-disconnect (:on-disconnect opts)
@@ -186,9 +185,16 @@
              on-prompt prompt-delay
              on-telnet]
       :as opts}]
-  {:pre [(not (nil? on-connect))
+  {:pre [(number? port)
+         (not (nil? on-connect))
          (not (nil? on-cmd))
-         (not (nil? on-auth))]}
+         (not (nil? on-auth))
+         (when on-404
+           (fn? on-404))
+         (when on-disconnect
+           (fn? on-disconnect))
+         (when on-telnet
+           (fn? on-telnet))]}
 
   (let [obj (atom {:connected (atom #{})
                    :on-prompt on-prompt
