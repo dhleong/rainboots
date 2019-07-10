@@ -2,7 +2,6 @@
       :doc "Communication functions; copied for convenience into core"}
   rainboots.comms
   (:require [clojure.core.async :refer [put!]]
-            [aleph.tcp :as tcp]
             [manifold.stream :as s]
             [rainboots
              [color :refer [process-colors strip-colors]]
@@ -14,7 +13,7 @@
   "Default hook fn for colorizing output, installed by default.
    Automatically strips color codes if the client has declared it
    doesn't support them."
-  [{:keys [cli text] :as arg}]
+  [{:keys [cli _text] :as arg}]
   (update arg :text (if (:colors @cli)
                       process-colors
                       strip-colors)))
@@ -23,22 +22,22 @@
 
 (defmacro ^:private with-extras
   "Expects the following vars to be defined in context:
-  - process-extras?
   - body
+  - <?process-extras> (you provide)
   - <cli-var> (you provide)
   This then declares `process-extras` and shifts vars around
   as appropriate."
-  [cli-var & body]
+  [?process-extras-var cli-var & body]
   (let [cli-decl (when cli-var
                    `(~cli-var (if ~'has-extras?
                                 ~cli-var
-                                ~'process-extras?)))
+                                ~?process-extras-var)))
         no-extras-body (if cli-var
                          `(cons ~cli-var ~'body)
-                         `(cons ~'process-extras? ~'body))]
-    `(let [~'has-extras? (map? ~'process-extras?)
+                         `(cons ~?process-extras-var ~'body))]
+    `(let [~'has-extras? (map? ~?process-extras-var)
            ~'process-extras (if ~'has-extras?
-                              ~'process-extras?
+                              ~?process-extras-var
                               {})
            ~'body (if ~'has-extras?
                     ~'body
@@ -73,8 +72,8 @@
     :arglists '([cli & body]
                 [process-extras cli & body])}
   send!
-  (fn [process-extras? cli & body]
-    (with-extras cli
+  (fn [?process-extras cli & body]
+    (with-extras ?process-extras cli
       (let [cli' @cli]
         (when-let [s (:stream cli')]
           (doseq [p body]
@@ -105,14 +104,13 @@
     :arglists '([pred & body]
                 [process-extras pred & body])}
   send-if!
-  (fn [process-extras? pred & body]
+  (fn [?process-extras pred & body]
     (when (bound? #'*svr*)
-      (when-let [connected (:connected @*svr*)]
-        (when-let [clients (seq @connected)]
-          (with-extras pred
-            (doseq [cli clients]
-              (when (pred cli)
-                (apply send! process-extras cli body)))))))))
+      (when-let [clients (some-> @*svr* :connected deref seq)]
+        (doseq [cli clients]
+          (when (pred cli)
+            (with-extras ?process-extras cli
+              (apply send! process-extras cli body))))))))
 
 (def
   ^{:doc
@@ -122,8 +120,8 @@
     :arglists '([& body]
                 [process-extras & body])}
   send-all!
-  (fn [process-extras? & body]
-    (with-extras nil
+  (fn [?process-extras & body]
+    (with-extras ?process-extras nil
       (apply send-if! process-extras (constantly true) body))))
 
 (defn redef-svr!
