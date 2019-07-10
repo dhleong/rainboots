@@ -124,6 +124,5 @@
     (with-extras ?process-extras nil
       (apply send-if! process-extras (constantly true) body))))
 
-(defn redef-svr!
-  [svr]
-  (def ^:dynamic *svr* svr))
+(defn redef-svr!  [svr]
+  (alter-var-root #'*svr* (constantly svr)))
