@@ -297,7 +297,7 @@
 (defn close!
   "Disconnect the client"
   [cli]
-  (swap! cli ::closed? true)
+  (swap! cli assoc ::closed? true)
   (when-let [s (:stream @cli)]
     (s/close! s)))
 

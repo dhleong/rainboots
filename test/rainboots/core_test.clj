@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [manifold.stream :as s]
             [rainboots
-             [core :refer :all]
+             [core :as core :refer :all]
              [color :refer [ansi-esc]]
              [proto :refer :all]]))
 
@@ -39,6 +39,13 @@
   `(deref
      (s/try-take! ~'*output* :failure
                   25 :timeout)))
+
+(deftest close!-test
+  (testing "close!"
+    (with-cli
+      (close! cli)
+      (is (true? (::core/closed? @cli)))
+      (is (s/closed? *input*)))))
 
 (deftest send!-test
   (testing "Single string"
