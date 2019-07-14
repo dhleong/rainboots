@@ -78,7 +78,7 @@
 
     {:stream stream
      :term-types #{}
-     :input-stack (atom [])
+     :input-stack []
      :rainboots/prompt-chan prompt-chan}))
 
 (defmacro with-binds
@@ -344,9 +344,9 @@
 
   `input` is the raw String input line"
   [cli cmd-set]
-  (swap! (:input-stack @cli) conj cmd-set))
+  (swap! cli update :input-stack conj cmd-set))
 
 (defn pop-cmds!
   "Pop the top-most cmdset from the user's input stack. See push-cmds!"
   [cli]
-  (swap! (:input-stack @cli) pop))
+  (swap! cli update :input-stack pop))

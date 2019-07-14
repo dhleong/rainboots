@@ -8,17 +8,17 @@
 
 (deftest cmds-stack-test
   (testing "Push pop"
-    (let [cli (atom {:input-stack (atom [])})]
+    (let [cli (atom {:input-stack []})]
       (push-cmds! cli :a)
       (push-cmds! cli :b)
       (is (= [:a :b]
-             @(:input-stack @cli)))
+             (:input-stack @cli)))
       (pop-cmds! cli)
       (is (= [:a]
-             @(:input-stack @cli)))
+             (:input-stack @cli)))
       (push-cmds! cli :c)
       (is (= [:a :c]
-             @(:input-stack @cli))))))
+             (:input-stack @cli))))))
 
 ;;
 ;; send! is very important and handles
