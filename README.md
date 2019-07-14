@@ -1,6 +1,6 @@
 # rainboots [![Clojars Project](https://img.shields.io/clojars/v/rainboots.svg?style=flat)](https://clojars.org/rainboots) [![Build Status](http://img.shields.io/travis/dhleong/rainboots.svg?style=flat)](https://travis-ci.org/dhleong/rainboots)
 
-*A more elegant way to make [MUD](https://en.wikipedia.org/wiki/MUD)*
+*A more elegant way to make [MUD][1]*
 
 ## What
 
@@ -30,7 +30,7 @@ know---feel free to send a PR with any missing signals!
 
 ## How
 
-A [sample](src/rainboots/sample.clj) is included with Rainboots that shows
+A [sample][2] is included with Rainboots that shows
 some basic usage, which we will describe in more detail here:
 
 ### Starting the server
@@ -67,7 +67,7 @@ accepted, however, you'll need to implement that `on-auth` handler.
 
 Before we talk about auth, let's learn about client objects. A client
 object is simply a clojure map wrapped in an
-[atom](http://clojure.org/reference/atoms).  There are a few "reserved"
+[atom][3].  There are a few "reserved"
 keywords (enumerated below) which you should not overwrite (rainboots
 won't stop you; do so at your own peril!), but otherwise feel free to
 store any transient data in the client object/atom.
@@ -77,11 +77,17 @@ store any transient data in the client object/atom.
 - `:stream` holds the connection object, used by `(send!)`
 - `:ch` holds your character data, once auth'd
 - `:input-stack` is used by the default command handler for command sets
+- `:term-types` is a set of strings reporeted by the client
 
-Character data management and formatting is totally up to you. You may
-want to put another `atom` there for more easy swapping, but rainboots
-doesn't care. As long as there is *some* non-`nil` value stored in
-`:ch`, it will assume you are logged in.
+Other keywords:
+
+- `:rainboots.core/closed?` is `true` if an only if the client is disconnected
+- `:rainboots.core/remote` is a map describing the remote connection (includes
+    keys like `:remote-user`)
+
+Character data management and formatting is totally up to you. As long as
+there is *some* non-`nil` value stored in `:ch`, it will assume you are logged
+in.
 
 ### Basic Auth
 
@@ -432,3 +438,7 @@ Copyright © 2016-2019 Daniel Leong
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
+
+[1]: https://en.wikipedia.org/wiki/MUD
+[2]: src/rainboots/sample.clj
+[3]: http://clojure.org/reference/atoms

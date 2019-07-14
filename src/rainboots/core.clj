@@ -129,7 +129,7 @@
         telnet-opts (:telnet-opts opts)
         on-telnet (:on-telnet opts)
         on-disconnect (:on-disconnect opts)
-        client (atom {})
+        client (atom {::remote info})
 
         wrapped (wrap-stream
                   s
