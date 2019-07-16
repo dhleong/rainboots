@@ -143,7 +143,7 @@
    the default cmdset"
   [on-err on-404 can-exec? cli input]
   (try
-    (if-let [handler (last @(:input-stack @cli))]
+    (if-let [handler (last (:input-stack @cli))]
       (handler on-404 can-exec? cli input)
       (exec-command on-404 can-exec? cli input))
     (catch Throwable e
