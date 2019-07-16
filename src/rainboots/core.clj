@@ -59,7 +59,7 @@
           (recur v))))))
 
 (defn- make-client
-  [svr stream]
+  [svr stream remote-info]
   (let [{:keys [on-prompt prompt-delay]} @svr
         prompt-chan (chan (async/sliding-buffer 1))]
     (when on-prompt
@@ -79,7 +79,8 @@
     {:stream stream
      :term-types #{}
      :input-stack []
-     :rainboots/prompt-chan prompt-chan}))
+     ::remote remote-info
+     ::prompt-chan prompt-chan}))
 
 (defmacro with-binds
   [& body]
@@ -129,7 +130,7 @@
         telnet-opts (:telnet-opts opts)
         on-telnet (:on-telnet opts)
         on-disconnect (:on-disconnect opts)
-        client (atom {::remote info})
+        client (atom {})
 
         wrapped (wrap-stream
                   s
@@ -149,7 +150,7 @@
                         :else
                         (on-auth client pkt)))))]
 
-    (reset! client (make-client svr wrapped))
+    (reset! client (make-client svr wrapped info))
     (swap! (:connected @svr) conj client)
 
     (with-binds
@@ -159,7 +160,7 @@
       s
       (fn []
         (swap! (:connected @svr) disj client)
-        (when-let [prompt-chan (:rainboots/prompt-chan @client)]
+        (when-let [prompt-chan (::prompt-chan @client)]
           ; stop prompting
           (async/close! prompt-chan))
 

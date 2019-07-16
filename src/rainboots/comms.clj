@@ -92,7 +92,7 @@
 
           ; attempt to prompt
           (when-not (:rainboots/in-prompt process-extras)
-            (when-let [prompt-chan (:rainboots/prompt-chan cli')]
+            (when-let [prompt-chan (:rainboots.core/prompt-chan cli')]
               (put! prompt-chan cli))))))))
 
 (def
