@@ -65,19 +65,19 @@ accepted, however, you'll need to implement that `on-auth` handler.
 
 ### Client Objects
 
-Before we talk about auth, let's learn about client objects. A client
-object is simply a clojure map wrapped in an
-[atom][3].  There are a few "reserved"
-keywords (enumerated below) which you should not overwrite (rainboots
-won't stop you; do so at your own peril!), but otherwise feel free to
-store any transient data in the client object/atom.
+Before we talk about auth, let's learn about client objects. A client object
+is simply a clojure map wrapped in an [atom][3].  There are a few "reserved"
+keywords (enumerated below) which you should not overwrite (rainboots won't
+stop you; do so at your own peril!), and any keywords in the `rainboots.core`
+namespace should probably also be left alone, but otherwise feel free to store
+any transient data in the client object/atom.
 
 "Reserved" keywords:
 
 - `:stream` holds the connection object, used by `(send!)`
 - `:ch` holds your character data, once auth'd
 - `:input-stack` is used by the default command handler for command sets
-- `:term-types` is a set of strings reporeted by the client
+- `:term-types` is a set of strings reported by the client
 
 Other keywords:
 
