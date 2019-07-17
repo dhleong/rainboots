@@ -6,7 +6,7 @@
             [clojure.walk :refer [postwalk]]
             [rainboots.color :refer [color-sequences]]))
 
-(declare *handlers*)
+(declare ^:dynamic *handlers*)
 (declare process)
 
 ; ======= spec ============================================
