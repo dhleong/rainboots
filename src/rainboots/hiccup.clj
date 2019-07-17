@@ -3,7 +3,7 @@
   rainboots.hiccup
   (:require [clojure.spec.alpha :as s]
             [clojure.string :as str]
-            [clojure.walk :refer [postwalk]]
+            [clojure.walk :refer [prewalk postwalk]]
             [rainboots.color :refer [color-sequences]]))
 
 (declare ^:dynamic *handlers*)
