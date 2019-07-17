@@ -5,7 +5,8 @@
             [manifold.stream :as s]
             [rainboots
              [color :refer [process-colors strip-colors]]
-             [hooks :refer [hook! trigger!]]]))
+             [hooks :refer [hook! trigger!]]
+             [hiccup :as hiccup]]))
 
 (def ^:dynamic *svr*)
 
@@ -52,23 +53,23 @@
 
 (def
   ^{:doc
-    "Send text to the client. You can pass in a variable number of
-     args, which may in turn be strings, vectors, or functions. Vectors
-     will be treated as additional varargs (IE: (apply)'d to this
-     function).  Functions will be called with the client as a single
-     argument, and the result sent as if it were passed directly.
-     Strings, and any string returned by a function argument or in a
-     vector, will be processed for color sequences (see the colors
-     module).
+    "Send text to the client. You can pass in a variable number of args, which
+     may in turn be strings, sequences, or functions. Vectors will be treated
+     as a Hiccup sequence (see `rainboots.hiccup/process`). Other sequences
+     will be treated as additional varags (IE: (apply)'d to this function).
+     Functions will be called with the client as a single argument, and the
+     result sent as if it were passed directly.  Strings, and any string
+     returned by a function argument or in a vector, will be processed for
+     color sequences (see the colors module).
 
     Maps will be treated as telnet sequences (see telnet!) Strings are
      processed via the :process-send! hook, which is how the colors are
-     applied. :process-send!  is triggered with a map containing the
-     recipient as :cli and the text as :text.
+     applied. :process-send!  is triggered with a map containing the recipient
+     as :cli and the text as :text.
 
-    You may optionally provide a map as the first argument, before the
-     client object, whose keys and values will also be passed along in
-     the map for the :process-send! hook."
+    You may optionally provide a map as the first argument, before the client
+     object, whose keys and values will also be passed along in the map for
+     the :process-send! hook."
     :arglists '([cli & body]
                 [process-extras cli & body])}
   send!
@@ -79,14 +80,15 @@
           (doseq [p body]
             (when p
               (condp #(%1 %2) p
-                vector? (apply send! process-extras cli p)
+                vector? (send! process-extras cli (hiccup/process cli p))
                 string? (s/put! s (:text
                                     (trigger! :process-send!
                                               (assoc process-extras
                                                      :cli cli
                                                      :text p))))
                 map? (s/put! s p)
-                fn? (send! process-extras cli (p cli)))))
+                fn? (send! process-extras cli (p cli))
+                seq? (apply send! process-extras cli p))))
 
           (s/put! s "\r\n")
 
