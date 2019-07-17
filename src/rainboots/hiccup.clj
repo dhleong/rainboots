@@ -78,12 +78,15 @@
   [cli type attrs children]
   (if-some [handler (or (when-not (keyword? type)
                           type)
+                        (when (= ::string type)
+                          handle-string)
                         (get @*handlers* type))]
     ; re-process, just in case
     (process cli (handler cli attrs children))
 
     (throw (IllegalArgumentException.
-             (str "No registered handler for: " type)))))
+             (str "No registered handler for: " type
+                  "; form=" [type attrs children])))))
 
 (defn- walk-hiccup [cli hiccup]
   (if (not (vector? hiccup))
@@ -101,12 +104,11 @@
                   (map (fn [a]
                          (if (and (vector? a)
                                   (= :string (first a)))
-                           (rest a) ; unpack [:string]
+                           (rest a) ; unpack [:string] spec'd type
                            a)))
-                  (into [:string {}]))
+                  (into [::string {}]))
 
         (let [{:keys [type attrs children] :or {attrs {}}} arg]
-          (when-not type (throw (IllegalStateException. (str "HUH: " form))))
           [type attrs (seq children)])))
 
     ; otherwise, probably the type key, or an argument, etc.
@@ -117,15 +119,24 @@
 
 (def ^:dynamic *handlers*
   (atom (assoc (color-handlers)
-               :string handle-string)))
+               ::string handle-string)))
 
 (defn process
   [cli form]
   (let [conformed (s/conform ::hiccup form)]
     (if (= ::s/invalid conformed)
       (throw (IllegalArgumentException.
-               (str form "INVALID:\n" (s/explain ::hiccup form))))
+               (str "Invalid hiccup: " form
+                    "\nExplanation: " (s/explain ::hiccup form))))
 
       (->> conformed
            (prewalk normalize-spec)
            (postwalk (partial walk-hiccup cli))))))
+
+(defmacro defhandler
+  [kw params & body]
+  `(swap! *handlers*
+          assoc ~kw
+          (fn ~(symbol (str (namespace kw) "_" (name kw)))
+            ~params
+            ~@body)))

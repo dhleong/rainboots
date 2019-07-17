@@ -18,8 +18,8 @@
 
   (testing "Hiccup-returning inline fn"
     (let [capify (fn [_ _ children]
-                   [:string (map str/upper-case children)])]
-      (is (= "MREYNOLDS"
+                   [:Y (map str/upper-case children)])]
+      (is (= "{YMREYNOLDS{n"
              (process cli [capify "mreynolds"])))))
 
   (testing "Sequence-returning inline fn"
@@ -36,3 +36,11 @@
     (is (= "{YCaptain {rMal{Y Reynolds{n"
            (process cli [:Y "Captain " [:r "Mal"] " Reynolds"])))))
 
+(deftest handler-test
+  (binding [*handlers* (atom {})]
+    (defhandler :upper
+      [cli _ children]
+      (map str/upper-case children))
+
+    (is (= "MREYNOLDS"
+           (process cli [:upper "mreynolds"])))))
