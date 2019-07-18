@@ -49,6 +49,7 @@
 (deftest handler-test
   (binding [*handlers* (atom {})]
     (defhandler :upper
+      "Accepts a single string and converts it to upper-case"
       [cli child]
       (str/upper-case child))
 

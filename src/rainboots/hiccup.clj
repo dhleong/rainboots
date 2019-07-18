@@ -138,9 +138,16 @@
              (postwalk (partial walk-hiccup cli))))))
 
 (defmacro defhandler
-  [kw params & body]
-  `(swap! *handlers*
-          assoc ~kw
-          (fn ~(symbol (str (namespace kw) "_" (name kw)))
-            ~params
-            ~@body)))
+  [kw doc params & body]
+  {:pre [(keyword? kw)
+         (string? doc)
+         (vector? params)]}
+  (let [fn-name (symbol (str (namespace kw) "_" (name kw)))]
+    ; NOTE we can't really attach the documentation to the
+    ; anonymous fn in a useful way, but it's good to have it
+    ; attached in the source
+    `(swap! *handlers*
+            assoc ~kw
+            (fn ^{:doc ~doc} ~fn-name
+              ~params
+              ~@body))))
