@@ -1,4 +1,4 @@
-(defproject rainboots "0.17.2"
+(defproject rainboots "0.18.0"
   :description "Protect yourself from the grossness of writing a MUD server"
   :url "http://github.com/dhleong/rainboots"
   :license {:name "Eclipse Public License"
