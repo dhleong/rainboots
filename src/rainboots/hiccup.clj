@@ -31,6 +31,10 @@
   (s/or :hiccup ::hiccup
         :value identity))
 
+(s/def ::all-strings
+  (s/* (s/or :string string?
+             :string-coll ::all-strings)))
+
 ; ======= builtins ========================================
 
 (defn trim-declear [s]
@@ -60,14 +64,17 @@
          {})))
 
 (defn- handle-string [cli & children]
-  (let [do-process (partial process cli)]
-    (->> children
-         (mapcat (fn [f]
-                   (if (and (seq? f)
-                            (not (vector? f)))
-                     (map do-process f)
-                     [(process cli f)])))
-         (str/join ""))))
+  (if (s/valid? ::all-strings children)
+    (str/join "" (flatten children))
+
+    (let [do-process (partial process cli)]
+      (->> children
+           (mapcat (fn [f]
+                     (if (and (seq? f)
+                              (not (vector? f)))
+                       (map do-process f)
+                       [(process cli f)])))
+           (str/join "")))))
 
 
 ; ======= utils ===========================================
