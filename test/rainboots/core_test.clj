@@ -57,18 +57,18 @@
       (send! cli "Mal" " Reynolds")
       (is (= (take!) "Mal"))
       (is (= (take!) " Reynolds"))))
-  (testing "Vector"
+  (testing "Sequence"
     (with-cli
-      (send! cli ["Mal" " Reynolds"])
+      (send! cli '("Mal" " Reynolds"))
       (is (= (take!) "Mal"))
       (is (= (take!) " Reynolds"))))
   (testing "fn"
     (with-cli
       (send! cli (constantly "Reynolds"))
       (is (= (take!) "Reynolds"))))
-  (testing "fn returns vector"
+  (testing "fn returns sequence"
     (with-cli
-      (send! cli (constantly ["Reynolds"]))
+      (send! cli (constantly '("Reynolds")))
       (is (= (take!) "Reynolds"))))
   (testing "Process colors (ansi enabled)"
     (with-cli

@@ -138,6 +138,67 @@ Because `on-auth` is plug-and-play, you can implement it however you
 like. You could have a single login with multiple characters, or even
 support two-factor auth!  The sky is the limit.
 
+### Communicating with clients
+
+You've seen some examples of the `send!` function up there, but it can do
+a lot more than you might have thought. For example, instead of embedding
+colors in the string with escape sequences, why not use a [hiccup][4]-inspired
+syntax?
+
+```clojure
+(send! cli "Logged in as " [:W (-> ch :name)])
+```
+
+All the same colors are supported as keyword tags, but with hiccup they
+automatically close themselves. They even support nesting:
+
+```clojure
+; these two lines are functionally identical:
+(send! cli "{YCaptain {rMal{Y Reynolds{n")
+(send! cli [:Y "Captain " [:r "Mal"] " Reynolds"])
+```
+
+Notice how with hiccup syntax, we didn't need to remember to re-set the yellow
+color after the inner red color block!
+
+#### Customizing Hiccup
+
+Of course, in addition to the colors built-in, you can provide your own
+hiccup handlers. A hiccup handler in Rainboots is just a function that
+takes the client receiving the message and whatever arguments you passed
+to it. For example:
+
+```clojure
+(defn upper [cli text]
+  (str/upper-case text))
+
+(send! cli "You yell, " [upper "Where'd you go?"])
+```
+
+If you'd like to declare your handler as a keyword, you can do that too:
+
+```clojure
+(rainboots.hiccup/defhandler :upper
+  [cli text]
+  (str/upper-case text))
+
+(send! cli "You yell, " [:upper "Where'd you go?"])
+```
+
+Since you're given the receiving client, you can do neat things like customize
+the output depending on who's receiving it:
+
+```clojure
+(rainboots.hiccup/defhandler :name
+  [cli person]
+  (if (ch-knows? (:ch @cli) person)
+    (:name person)
+    "Someone"))
+
+(send! cli [:name sender] " yells, " [:upper "I'm over here!"])
+```
+
+
 ### Command Handling
 
 Rainboots comes with a pretty powerful `on-cmd` handler installed by
@@ -442,3 +503,4 @@ your option) any later version.
 [1]: https://en.wikipedia.org/wiki/MUD
 [2]: src/rainboots/sample.clj
 [3]: http://clojure.org/reference/atoms
+[4]: https://github.com/weavejester/hiccup/
