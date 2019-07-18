@@ -11,19 +11,29 @@
            (process cli "mreynolds"))))
 
   (testing "Fn inline"
-    (let [capify (fn [_ _ children]
-                   (str/join (map str/upper-case children)))]
+    (let [capify (fn [_ s]
+                   (str/upper-case s))]
       (is (= "MREYNOLDS"
              (process cli [capify "mreynolds"])))))
 
+  (testing "Inline fn with attrs"
+    (let [caseify (fn [_ {:keys [mode]} s]
+                    (case mode
+                      :upper (str/upper-case s)
+                      :lower (str/lower-case s)))]
+      (is (= "MREYNOLDS"
+             (process cli [caseify {:mode :upper} "mreynolds"])))
+      (is (= "mreynolds"
+             (process cli [caseify {:mode :lower} "MREYNOLDS"])))))
+
   (testing "Hiccup-returning inline fn"
-    (let [capify (fn [_ _ children]
-                   [:Y (map str/upper-case children)])]
+    (let [capify (fn [_ text]
+                   [:Y (str/upper-case text)])]
       (is (= "{YMREYNOLDS{n"
              (process cli [capify "mreynolds"])))))
 
   (testing "Sequence-returning inline fn"
-    (let [capify (fn [_ _ children]
+    (let [capify (fn [_ & children]
                    (map str/upper-case children))]
       (is (= "MREYNOLDS"
              (process cli [capify "mreynolds"])))))
@@ -39,8 +49,8 @@
 (deftest handler-test
   (binding [*handlers* (atom {})]
     (defhandler :upper
-      [cli _ children]
-      (map str/upper-case children))
+      [cli child]
+      (str/upper-case child))
 
     (is (= "MREYNOLDS"
            (process cli [:upper "mreynolds"])))))

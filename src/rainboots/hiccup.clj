@@ -21,17 +21,11 @@
   (s/cat :type ::hiccup-type
          :children (s/* ::hiccup)))
 
-(s/def ::hiccup-with-attrs
-  (s/cat :type ::hiccup-type
-         :attrs map?
-         :children (s/* ::hiccup)))
-
 (s/def ::hiccup
   (s/or :string string?
         :simple ::hiccup-simple
-        :has-attrs ::hiccup-with-attrs
+        :attrs map?
         :seq (s/coll-of ::hiccup)))
-
 
 ; ======= builtins ========================================
 
@@ -41,7 +35,7 @@
                  2))
     s))
 
-(defn- handle-color [color-str _cli _attrs children]
+(defn- handle-color [color-str _cli & children]
   (let [color-rune (str "{" color-str)]
     (->> children
          (map trim-declear)
@@ -61,7 +55,7 @@
                   (partial handle-color color-str)))
          {})))
 
-(defn- handle-string [cli _ children]
+(defn- handle-string [cli & children]
   (let [do-process (partial process cli)]
     (->> children
          (mapcat (fn [f]
@@ -75,41 +69,51 @@
 ; ======= utils ===========================================
 
 (defn- process-form
-  [cli type attrs children]
+  [cli type args]
   (if-some [handler (or (when-not (keyword? type)
                           type)
                         (when (= ::string type)
                           handle-string)
                         (get @*handlers* type))]
     ; re-process, just in case
-    (process cli (handler cli attrs children))
+    (process cli (apply handler cli args))
 
     (throw (IllegalArgumentException.
              (str "No registered handler for: " type
-                  "; form=" [type attrs children])))))
+                  "; form=" [type args])))))
 
 (defn- walk-hiccup [cli hiccup]
-  (if (not (vector? hiccup))
+  (if (or (map-entry? hiccup)
+          (not (vector? hiccup)))
     hiccup
 
-    (let [[type attrs children] hiccup]
-      (process-form cli type attrs children))))
+    (let [[type & args] hiccup]
+      (when-not type
+        (throw (IllegalArgumentException.
+                 (str "Invalid hiccup form: " hiccup))))
+
+      (process-form cli type args))))
 
 (defn- normalize-spec [form]
   (if (vector? form)
     (let [[kind arg] form]
       (case kind
         :string arg
+        :attrs arg
         :seq (->> arg
                   (map (fn [a]
                          (if (and (vector? a)
                                   (= :string (first a)))
                            (rest a) ; unpack [:string] spec'd type
                            a)))
-                  (into [::string {}]))
+                  (into [::string]))
 
-        (let [{:keys [type attrs children] :or {attrs {}}} arg]
-          [type attrs (seq children)])))
+        :simple
+        (let [{:keys [type children]} arg]
+          (into [type] children))
+
+        ; probably a map-entry or something
+        form))
 
     ; otherwise, probably the type key, or an argument, etc.
     form))
@@ -130,8 +134,8 @@
                     "\nExplanation: " (s/explain ::hiccup form))))
 
       (->> conformed
-           (prewalk normalize-spec)
-           (postwalk (partial walk-hiccup cli))))))
+             (prewalk normalize-spec)
+             (postwalk (partial walk-hiccup cli))))))
 
 (defmacro defhandler
   [kw params & body]
