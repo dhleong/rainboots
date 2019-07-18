@@ -3,7 +3,8 @@
             [clojure.test :refer :all]
             [rainboots.hiccup :refer :all]))
 
-(def cli (atom {:ch {:name "Mal Reynolds"}}))
+(def cli (atom {:ch {:name "Mal Reynolds"
+                     :knows #{"Zoe" "Kaylee"}}}))
 
 (deftest hiccup-test
   (testing "String pass-through"
@@ -53,5 +54,22 @@
       [cli child]
       (str/upper-case child))
 
-    (is (= "MREYNOLDS"
-           (process cli [:upper "mreynolds"])))))
+    (testing "Use a declared hiccup handler"
+      (is (= "MREYNOLDS"
+             (process cli [:upper "mreynolds"]))))
+
+    (testing "Use the provided cli obj"
+      (defhandler :name
+        "The name of an entity, accounting for knowledge of it"
+        [cli entity]
+        (if ((-> @cli :ch :knows) (:name @entity))
+          (:name @entity)
+          "Somebody"))
+
+      (let [zoe (atom {:name "Zoe"})
+            badger (atom {:name "Badger"})]
+
+        (is (= "Zoe"
+               (process cli [:name zoe])))
+        (is (= "Somebody"
+               (process cli [:name badger])))))))

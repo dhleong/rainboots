@@ -19,13 +19,17 @@
 
 (s/def ::hiccup-simple
   (s/cat :type ::hiccup-type
-         :children (s/* ::hiccup)))
+         :children (s/* ::hiccup-child)))
 
 (s/def ::hiccup
   (s/or :string string?
         :simple ::hiccup-simple
         :attrs map?
         :seq (s/coll-of ::hiccup)))
+
+(s/def ::hiccup-child
+  (s/or :hiccup ::hiccup
+        :value identity))
 
 ; ======= builtins ========================================
 
@@ -100,6 +104,8 @@
       (case kind
         :string arg
         :attrs arg
+        :hiccup (normalize-spec arg)
+        :value arg
         :seq (->> arg
                   (map (fn [a]
                          (if (and (vector? a)
@@ -134,8 +140,8 @@
                     "\nExplanation: " (s/explain ::hiccup form))))
 
       (->> conformed
-             (prewalk normalize-spec)
-             (postwalk (partial walk-hiccup cli))))))
+           (prewalk normalize-spec)
+           (postwalk (partial walk-hiccup cli))))))
 
 (defmacro defhandler
   [kw doc params & body]
