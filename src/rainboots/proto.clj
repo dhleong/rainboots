@@ -277,11 +277,11 @@
           ::original s)))))
 
 (defn- reflect-method [clazz method-name]
-  (let [m (.getDeclaredMethod clazz
-                              method-name
-                              (into-array Class []))
+  (let [m (doto (.getDeclaredMethod clazz
+                                    method-name
+                                    (into-array Class []))
+            (.setAccessible true))
         empty-array (into-array Object [])]
-    (.setAccessible m true)
     (fn method-getter [obj]
       (.invoke m obj empty-array))))
 
@@ -303,9 +303,76 @@
                  (.get field obj))))))
 
 (defn stream->fd [s]
-  (let [aleph-ch (-> s meta :rainboots.proto/original meta :aleph/channel)
-        nio-ch ((channel-getter) aleph-ch)
-        sock (.socket nio-ch)
-        impl ((impl-getter) sock)
-        descriptor ((file-descriptor-getter) impl)]
-    ((fd-getter) descriptor)))
+  (-> s
+      meta :rainboots.proto/original
+      meta :aleph/channel
+      ((channel-getter))  ; get the nio SocketChannel
+      (#(.socket %))      ; get the underling Socket
+      ((impl-getter))
+      ((file-descriptor-getter))
+      ((fd-getter))))
+
+(def ^:private file-descriptor-factory
+  (memoize (fn []
+             (let [constructor (doto (.getDeclaredConstructor
+                                       java.io.FileDescriptor
+                                       (into-array Class [Integer/TYPE]))
+                                 (.setAccessible true))]
+               (fn create-file-descriptor [^long fd]
+                 (.newInstance constructor
+                               (into-array Object [(Integer/valueOf fd)])))))))
+
+(def ^:private socket-impl-factory
+  (memoize (fn []
+             (let [constructor (doto (.getDeclaredConstructor
+                                       java.net.PlainSocketImpl
+                                       (into-array Class [java.io.FileDescriptor]))
+                                 (.setAccessible true))]
+               (fn create-socket-impl [^java.io.FileDescriptor fd]
+                 (.newInstance constructor
+                               (into-array Object [fd])))))))
+
+(def ^:private socket-factory
+  (memoize (fn []
+             (let [constructor (doto (.getDeclaredConstructor
+                                       java.net.Socket
+                                       (into-array Class [java.net.SocketImpl]))
+                                 (.setAccessible true))
+                   set-created (reflect-method java.net.Socket "setCreated")
+                   set-connected (reflect-method java.net.Socket "setConnected")]
+               (fn create-socket [^java.net.SocketImpl impl]
+                 (doto (.newInstance constructor
+                                     (into-array Object [impl]))
+                   (set-created)
+                   (set-connected)))))))
+
+(def ^:private socket-channel-factory
+  (memoize (fn []
+             ; this bit is ESPECIALLY jvm implementation-dependent :\
+             (let [constructor (doto (.getDeclaredConstructor
+                                       sun.nio.ch.SocketChannelImpl
+                                       (into-array Class [java.nio.channels.spi.SelectorProvider
+                                                          java.io.FileDescriptor
+                                                          java.net.InetSocketAddress]))
+                                 (.setAccessible true))]
+               (fn create-socket-channel [^java.io.FileDescriptor fd]
+                 (.newInstance constructor
+                               (into-array Object [(java.nio.channels.spi.SelectorProvider/provider)
+                                                   fd
+                                                   nil])))))))
+
+(defn fd->stream [fd]
+  (let [file-descriptor ((file-descriptor-factory) fd)
+        ;; ch (.getChannel (java.io.FileInputStream. file-descriptor))
+        ;; socket (-> file-descriptor
+        ;;            ((socket-impl-factory))
+        ;;            ((socket-factory)))
+        ;; ch (.getChannel socket)
+        ch ((socket-channel-factory) file-descriptor)
+        ]
+    ;; (println ch)
+    ;; (instance? java.nio.channels.SelectableChannel ch)
+    ch
+    #_(s/splice
+      (aleph.netty/sink (io.netty.channel.socket.nio.NioSocketChannel. ch))
+      (aleph.netty/source (io.netty.channel.socket.nio.NioSocketChannel. ch)))))
