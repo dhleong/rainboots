@@ -271,4 +271,41 @@
         #(on-packet s %)
         spliced)
 
-      spliced)))
+      (doto spliced
+        (alter-meta!
+          assoc
+          ::original s)))))
+
+(defn- reflect-method [clazz method-name]
+  (let [m (.getDeclaredMethod clazz
+                              method-name
+                              (into-array Class []))
+        empty-array (into-array Object [])]
+    (.setAccessible m true)
+    (fn method-getter [obj]
+      (.invoke m obj empty-array))))
+
+(def ^:private channel-getter
+  (memoize #(reflect-method io.netty.channel.nio.AbstractNioChannel
+                            "javaChannel")))
+
+(def ^:private impl-getter
+  (memoize #(reflect-method java.net.Socket "getImpl")))
+
+(def ^:private file-descriptor-getter
+  (memoize #(reflect-method java.net.SocketImpl "getFileDescriptor")))
+
+(def ^:private fd-getter
+  (memoize (fn []
+             (let [field (doto (.getDeclaredField java.io.FileDescriptor "fd")
+                           (.setAccessible true))]
+               (fn field-getter [obj]
+                 (.get field obj))))))
+
+(defn stream->fd [s]
+  (let [aleph-ch (-> s meta :rainboots.proto/original meta :aleph/channel)
+        nio-ch ((channel-getter) aleph-ch)
+        sock (.socket nio-ch)
+        impl ((impl-getter) sock)
+        descriptor ((file-descriptor-getter) impl)]
+    ((fd-getter) descriptor)))

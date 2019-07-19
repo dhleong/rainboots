@@ -1,10 +1,7 @@
 (ns rainboots.sample
   (:require [rainboots
              [command :refer [defcmdset defcmd]]
-             [color :refer [ansi]]
-             [core :refer :all]
-             [proto :refer [tn-iac tn-do tn-op-ttype]]
-             [util :refer [wrap-fn]]]))
+             [core :refer :all]]))
 
 (defn on-auth
   [cli line]
@@ -35,7 +32,7 @@
     ["\n{Y<{WHello: {n" (:name ch) "{Y>{n"]))
 
 (defn on-telnet
-  [cli pkt]
+  [_cli pkt]
   (println "# Telnet: " pkt))
 
 ;;
@@ -79,16 +76,14 @@
 ;; Lifecycle
 ;;
 
-(defn start-sample
-  []
+(defn start-sample []
   (def svr
     (start-server
-      :port 4321
+      :port 4567
       :on-auth on-auth
       :on-connect on-connect
       :on-telnet on-telnet
       :on-prompt on-prompt)))
 
-(defn stop-sample
-  []
+(defn stop-sample []
   (stop-server svr))
